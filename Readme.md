@@ -1,6 +1,5 @@
 Frontend Setup
 
-
 1. cd frontend
 2. npm create vite@latest . -- --template react
 3. npm install
@@ -10,4 +9,9 @@ Frontend Setup
 
 Backend Setup 
 
-D:\AWS HACKATHON\.gitignore
+1.cd Backend
+2.npm init -y
+3.npm install express cors helmet dotenv zod
+4.npm install prisma @prisma/client
+5.npm install -D nodemon
+6.npx prisma init --datasource-provider postgresql
