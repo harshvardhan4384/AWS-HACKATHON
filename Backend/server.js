@@ -1,24 +1,25 @@
-const express = require("express");
-const cors = require("cors");
-const helmet = require("helmet");
-require("dotenv").config();
+'use strict';
 
-const app = express();
+require('dotenv').config();
 
-app.use(helmet());
-app.use(cors());
-app.use(express.json());
+const http = require('http');
+const app = require('./src/app');
+const config = require('./src/config/env');
 
-app.get("/api/health", (req, res) => {
-  res.json({
-    success: true,
-    service: "Re:COVER Backend",
-    status: "healthy",
+const server = http.createServer(app);
+
+server.listen(config.port, () => {
+  console.log(`Re:COVER Backend running on http://localhost:${config.port}`);
+});
+
+// ── Graceful shutdown ─────────────────────────────────────────────────────────
+const shutdown = (signal) => {
+  console.log(`${signal} received — shutting down gracefully`);
+  server.close(() => {
+    console.log('HTTP server closed');
+    process.exit(0);
   });
-});
+};
 
-const PORT = process.env.PORT || 5000;
-
-app.listen(PORT, () => {
-  console.log(`Re:COVER Backend running on http://localhost:${PORT}`);
-});
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));

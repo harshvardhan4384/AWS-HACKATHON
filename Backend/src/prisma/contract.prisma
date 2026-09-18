@@ -1,0 +1,513 @@
+// use prisma-8
+// Re:COVER — Application Database Schema
+// Task 5: OAuth Foundation & Provider Abstraction
+//
+// Design decisions:
+// - IDs: uuid() — non-sequential, collision-resistant, suitable for distributed systems
+// - Timestamps: TimestamptzString — Node 26.8.1 does not expose globalThis.Temporal;
+//   TimestamptzString stores as PostgreSQL timestamptz and returns RFC-3339 text, no Temporal needed.
+//   @default(dbgenerated("now()")) — DB-side default for createdAt/updatedAt.
+//   updatedAt is set by application code (Prisma 8 RC has no @updatedAt for TimestamptzString).
+// - JSON/JSONB: Used for provider-specific metadata only. Core relational data is NOT JSON.
+// - Enums: @@type("pg/text@1") with CHECK-constraint enforcement
+// - Security: No plaintext tokens, passwords, or secrets in any field defaults or schema.
+
+// =============================================================================
+// ENUMS
+// =============================================================================
+
+/// OAuth/integration provider connected to Re:COVER
+enum Provider {
+  @@type("pg/text@1")
+  GOOGLE       = "GOOGLE"
+  GITHUB       = "GITHUB"
+  AWS          = "AWS"
+}
+
+/// Status of a ConnectedAccount (OAuth connection)
+enum AccountStatus {
+  @@type("pg/text@1")
+  ACTIVE   = "ACTIVE"
+  INACTIVE = "INACTIVE"
+  REVOKED  = "REVOKED"
+  ERROR    = "ERROR"
+}
+
+/// Processing/lifecycle status of a SecurityEvent
+enum SecurityEventStatus {
+  @@type("pg/text@1")
+  RAW        = "RAW"
+  NORMALIZED = "NORMALIZED"
+  ANALYZED   = "ANALYZED"
+  CORRELATED = "CORRELATED"
+  DISMISSED  = "DISMISSED"
+}
+
+/// Lifecycle status of a security Incident
+enum IncidentStatus {
+  @@type("pg/text@1")
+  OPEN                 = "OPEN"
+  INVESTIGATING        = "INVESTIGATING"
+  CONTAINMENT_REQUIRED = "CONTAINMENT_REQUIRED"
+  RECOVERY_REQUIRED    = "RECOVERY_REQUIRED"
+  VERIFYING            = "VERIFYING"
+  RESOLVED             = "RESOLVED"
+  CLOSED               = "CLOSED"
+}
+
+/// Severity rating — used on events, incidents, and recovery actions
+enum Severity {
+  @@type("pg/text@1")
+  CRITICAL = "CRITICAL"
+  HIGH     = "HIGH"
+  MEDIUM   = "MEDIUM"
+  LOW      = "LOW"
+  INFO     = "INFO"
+}
+
+/// Type/role of an AI security agent in the investigation pipeline
+enum AgentType {
+  @@type("pg/text@1")
+  ORCHESTRATOR = "ORCHESTRATOR"
+  PLANNER      = "PLANNER"
+  INVESTIGATOR = "INVESTIGATOR"
+  VERIFIER     = "VERIFIER"
+}
+
+/// Execution status of an AgentRun
+enum AgentRunStatus {
+  @@type("pg/text@1")
+  PENDING   = "PENDING"
+  RUNNING   = "RUNNING"
+  COMPLETED = "COMPLETED"
+  FAILED    = "FAILED"
+  CANCELLED = "CANCELLED"
+}
+
+/// Type of recovery/remediation action
+enum RecoveryActionType {
+  @@type("pg/text@1")
+  REVOKE_OAUTH        = "REVOKE_OAUTH"
+  REVOKE_TOKEN        = "REVOKE_TOKEN"
+  REMOVE_SSH_KEY      = "REMOVE_SSH_KEY"
+  TERMINATE_SESSION   = "TERMINATE_SESSION"
+  DISABLE_INTEGRATION = "DISABLE_INTEGRATION"
+  ROTATE_CREDENTIAL   = "ROTATE_CREDENTIAL"
+  SECURITY_CONFIG     = "SECURITY_CONFIG"
+}
+
+/// Execution status of a RecoveryAction
+enum RecoveryActionStatus {
+  @@type("pg/text@1")
+  PROPOSED         = "PROPOSED"
+  PENDING_APPROVAL = "PENDING_APPROVAL"
+  APPROVED         = "APPROVED"
+  EXECUTING        = "EXECUTING"
+  COMPLETED        = "COMPLETED"
+  FAILED           = "FAILED"
+  REJECTED         = "REJECTED"
+  CANCELLED        = "CANCELLED"
+}
+
+/// Status of an Approval decision
+enum ApprovalStatus {
+  @@type("pg/text@1")
+  PENDING  = "PENDING"
+  APPROVED = "APPROVED"
+  REJECTED = "REJECTED"
+  EXPIRED  = "EXPIRED"
+}
+
+/// Actor type in AuditLog — who or what performed the action
+enum AuditActorType {
+  @@type("pg/text@1")
+  USER     = "USER"
+  SYSTEM   = "SYSTEM"
+  AGENT    = "AGENT"
+  PROVIDER = "PROVIDER"
+}
+
+// =============================================================================
+// MODELS
+// =============================================================================
+
+/// Re:COVER platform user — owns all connected accounts, events, and incidents.
+/// Does NOT store provider passwords or raw OAuth tokens.
+model User {
+  id           String        @id @default(uuid())
+  email        String        @unique
+  displayName  String?
+  /// Salted bcrypt hash of the user password. Nullable for future WebAuthn/Passkey users.
+  passwordHash String?
+  status       AccountStatus @default(ACTIVE)
+  createdAt    TimestamptzString @default(dbgenerated("now()"))
+  updatedAt    TimestamptzString @default(dbgenerated("now()"))
+
+  // Relations
+  sessions          Session[]
+  oauthStates       OAuthState[]
+  connectedAccounts ConnectedAccount[]
+  securityEvents    SecurityEvent[]
+  incidents         Incident[]
+  agentRuns         AgentRun[]
+  approvals         Approval[]
+  auditLogs         AuditLog[]
+}
+
+/// A secure server-side session for an authenticated Re:COVER user.
+///
+/// SECURITY: sessionTokenHash stores the SHA-256 hash of the raw session token.
+/// The raw session token is sent ONLY to the client via an HttpOnly cookie and
+/// is never stored in the database. Even in the event of a database leak,
+/// session tokens cannot be replayed or hijacked.
+model Session {
+  id               String            @id @default(uuid())
+  userId           String
+  /// SHA-256 hex digest of the raw session token
+  sessionTokenHash String            @unique
+  expiresAt        TimestamptzString
+  createdAt        TimestamptzString @default(dbgenerated("now()"))
+  lastUsedAt       TimestamptzString @default(dbgenerated("now()"))
+  ipAddress        String?
+  userAgent        String?
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+/// Ephemeral server-side state for OAuth 2.0 authorization flows.
+///
+/// SECURITY:
+/// - stateHash stores the SHA-256 hash of the cryptographically random state parameter.
+/// - codeVerifier stores the PKCE code_verifier (generated locally, exchanged during callback).
+/// - States expire rapidly (default 10 minutes) and are strictly single-use.
+/// - Associated with the authenticated Re:COVER user initiating the connection.
+model OAuthState {
+  id           String            @id @default(uuid())
+  userId       String
+  provider     Provider
+  /// SHA-256 hex digest of the raw state parameter
+  stateHash    String            @unique
+  /// PKCE code_verifier for S256 code exchange
+  codeVerifier String?
+  expiresAt    TimestamptzString
+  createdAt    TimestamptzString @default(dbgenerated("now()"))
+  usedAt       TimestamptzString?
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+/// A provider account (Google, GitHub, AWS…) connected to Re:COVER.
+///
+/// SECURITY: accessTokenCiphertext and refreshTokenCiphertext are AES-256-GCM
+/// encrypted ciphertext fields. Actual encryption will be implemented in a future
+/// security task. NEVER store plaintext tokens. NEVER log these fields.
+model ConnectedAccount {
+  id                     String            @id @default(uuid())
+  userId                 String
+  provider               Provider
+  /// Provider's own stable account identifier (e.g. Google sub, GitHub user ID)
+  providerAccountId      String
+  /// Human-readable display name or email from the provider
+  providerDisplayName    String?
+  status                 AccountStatus     @default(ACTIVE)
+  /// Granted OAuth scopes (space-separated or JSON array text)
+  grantedScopes          String?
+  /// SECURITY: AES-256-GCM ciphertext of OAuth access token. Never store plaintext.
+  accessTokenCiphertext  String?
+  /// SECURITY: AES-256-GCM ciphertext of OAuth refresh token. Never store plaintext.
+  refreshTokenCiphertext String?
+  tokenExpiresAt         TimestamptzString?
+  lastSyncAt             TimestamptzString?
+  createdAt              TimestamptzString @default(dbgenerated("now()"))
+  updatedAt              TimestamptzString @default(dbgenerated("now()"))
+
+  // Relations
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  securityEvents  SecurityEvent[]
+  recoveryActions RecoveryAction[]
+
+  // A user cannot connect the same provider account twice
+  @@unique([userId, provider, providerAccountId])
+  @@index([userId])
+  @@index([provider])
+  @@index([status])
+}
+
+/// A normalized security event received from a connected provider.
+/// Designed for high volume and idempotent ingestion.
+/// providerEventId + connectedAccountId = idempotency key (prevents duplicate ingestion).
+///
+/// Do NOT store email bodies, file contents, repository contents,
+/// or large raw provider payloads. eventData is for structured metadata only.
+model SecurityEvent {
+  id                 String              @id @default(uuid())
+  userId             String
+  connectedAccountId String?
+  provider           Provider
+  eventType          String
+  /// Provider's own event ID — combined with connectedAccountId for idempotency
+  providerEventId    String?
+  /// When the event actually occurred at the provider (may differ from createdAt)
+  occurredAt         TimestamptzString?
+  severity           Severity?
+  status             SecurityEventStatus @default(RAW)
+  /// Normalized structured metadata (JSON). Action summary, resource name, result. NOT raw payloads.
+  eventData          Json?
+  /// Source IP address if provided
+  sourceIp           String?
+  /// Device/user-agent metadata (JSON): deviceType, os, browser
+  deviceMetadata     Json?
+  /// Approximate location metadata (JSON): country, city, region
+  locationMetadata   Json?
+  /// Link to an Incident if this event was correlated into one
+  incidentId         String?
+  createdAt          TimestamptzString @default(dbgenerated("now()"))
+  updatedAt          TimestamptzString @default(dbgenerated("now()"))
+
+  // Relations
+  user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  connectedAccount ConnectedAccount? @relation(fields: [connectedAccountId], references: [id], onDelete: SetNull)
+  incident         Incident?         @relation(fields: [incidentId], references: [id], onDelete: SetNull)
+  evidence         Evidence[]
+
+  // Idempotency: same provider event cannot be ingested twice for the same account
+  @@unique([connectedAccountId, providerEventId])
+  @@index([userId])
+  @@index([connectedAccountId])
+  @@index([provider])
+  @@index([eventType])
+  @@index([status])
+  @@index([severity])
+  @@index([occurredAt])
+  @@index([createdAt])
+  @@index([incidentId])
+}
+
+/// A security incident under investigation by Re:COVER.
+/// Central entity linking events, evidence, agent runs, and recovery actions.
+model Incident {
+  id              String         @id @default(uuid())
+  userId          String
+  title           String
+  summary         String?
+  status          IncidentStatus @default(OPEN)
+  severity        Severity
+  /// How the incident was detected: "RULE_MATCH", "AGENT_CORRELATION", "USER_REPORT"
+  detectionSource String?
+  startedAt       TimestamptzString @default(dbgenerated("now()"))
+  resolvedAt      TimestamptzString?
+  createdAt       TimestamptzString @default(dbgenerated("now()"))
+  updatedAt       TimestamptzString @default(dbgenerated("now()"))
+
+  // Relations
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  securityEvents  SecurityEvent[]
+  evidence        Evidence[]
+  agentRuns       AgentRun[]
+  recoveryActions RecoveryAction[]
+  approvals       Approval[]
+  auditLogs       AuditLog[]
+
+  @@unique([id, userId])
+  @@index([userId])
+  @@index([status])
+  @@index([severity])
+  @@index([startedAt])
+  @@index([userId, status])
+}
+
+/// Evidence collected during incident investigation.
+/// Examples: suspicious login, OAuth grant, SSH key, API token, session.
+/// Use structured JSON. Do NOT store secrets or raw provider payloads.
+model Evidence {
+  id           String    @id @default(uuid())
+  incidentId   String
+  /// Optional: the SecurityEvent that produced this evidence
+  eventId      String?
+  /// Evidence type: "SUSPICIOUS_LOGIN", "OAUTH_GRANT", "SSH_KEY", "API_TOKEN",
+  /// "SESSION", "DEVICE", "REPOSITORY_ACTION", "CLOUD_EVENT", "INTEGRATION"
+  evidenceType String
+  source       Provider?
+  /// Structured evidence payload (JSON). Key identifiers, metadata. No secrets.
+  evidenceData Json?
+  /// Confidence score 0.0–1.0 assigned by the investigating agent
+  confidence   Float?
+  createdAt    TimestamptzString @default(dbgenerated("now()"))
+  updatedAt    TimestamptzString @default(dbgenerated("now()"))
+
+  // Relations
+  incident Incident       @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  event    SecurityEvent? @relation(fields: [eventId], references: [id], onDelete: SetNull)
+
+  @@index([incidentId])
+  @@index([eventId])
+  @@index([evidenceType])
+}
+
+/// An AI/security agent execution run.
+/// Represents one agent processing one incident through one role.
+///
+/// Store structured summaries, decisions, findings, and tool result metadata ONLY.
+/// Do NOT store chain-of-thought, raw LLM context, or any secrets/credentials.
+model AgentRun {
+  id            String         @id @default(uuid())
+  userId        String
+  incidentId    String
+  agentType     AgentType
+  status        AgentRunStatus @default(PENDING)
+  /// What triggered this run: "AUTO_DETECTION", "MANUAL", "ESCALATION"
+  triggerSource String?
+  /// AI model identifier: e.g. "anthropic.claude-3-5-sonnet-20241022-v2:0"
+  modelId       String?
+  /// AI provider: e.g. "AWS_BEDROCK"
+  modelProvider String?
+  /// Trace ID linking agent chain: Orchestrator → Planner → Investigator → Verifier
+  correlationId String?
+  startedAt     TimestamptzString?
+  completedAt   TimestamptzString?
+  /// Structured agent findings and decisions (JSON). No secrets.
+  resultSummary Json?
+  errorMessage  String?
+  createdAt     TimestamptzString @default(dbgenerated("now()"))
+  updatedAt     TimestamptzString @default(dbgenerated("now()"))
+
+  // Relations
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  incident Incident @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([incidentId])
+  @@index([agentType])
+  @@index([status])
+  @@index([correlationId])
+  @@index([createdAt])
+}
+
+/// A proposed or executed recovery/remediation action.
+///
+/// Actions are NOT automatically authorized.
+/// Authorization flow: LLM Proposal → Policy Engine → Permission Check
+///   → Human Approval (or explicit automation) → Executor → Verification → Audit
+///
+/// Cardinality: RecoveryAction has a 1-to-many relationship with Approval to maintain
+/// full audit history of all approval attempts (including REJECTED or EXPIRED cycles
+/// before a subsequent re-request).
+model RecoveryAction {
+  id                 String               @id @default(uuid())
+  incidentId         String
+  connectedAccountId String?
+  actionType         RecoveryActionType
+  status             RecoveryActionStatus @default(PROPOSED)
+  riskLevel          Severity
+  proposedAt         TimestamptzString @default(dbgenerated("now()"))
+  executedAt         TimestamptzString?
+  /// Verification outcome after execution: "VERIFIED", "FAILED", "PENDING"
+  verificationStatus String?
+  verifiedAt         TimestamptzString?
+  /// Structured provider response after execution (JSON). No secrets.
+  providerResult     Json?
+  errorMessage       String?
+  createdAt          TimestamptzString @default(dbgenerated("now()"))
+  updatedAt          TimestamptzString @default(dbgenerated("now()"))
+
+  // Relations
+  incident         Incident          @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  connectedAccount ConnectedAccount? @relation(fields: [connectedAccountId], references: [id], onDelete: SetNull)
+  approvals        Approval[]
+
+  @@unique([id, incidentId])
+  @@index([incidentId])
+  @@index([connectedAccountId])
+  @@index([actionType])
+  @@index([status])
+  @@index([riskLevel])
+}
+
+/// Authorization record for a high-risk recovery action.
+/// All approvals require explicit human or policy-engine decision.
+/// Check expiresAt before consuming an APPROVED record.
+///
+/// Integrity: Composite foreign keys ensure that an Approval cannot be associated
+/// with a mismatched recoveryActionId, incidentId, or userId.
+/// Cardinality: Multiple approvals per RecoveryAction form an immutable audit trail
+/// of approval attempts (e.g. initial rejection followed by updated request).
+model Approval {
+  id               String         @id @default(uuid())
+  userId           String
+  incidentId       String
+  recoveryActionId String
+  status           ApprovalStatus @default(PENDING)
+  requestedAt      TimestamptzString @default(dbgenerated("now()"))
+  decidedAt        TimestamptzString?
+  expiresAt        TimestamptzString?
+  /// Structured decision context (JSON): reason, policy references, conditions
+  decisionMetadata Json?
+  createdAt        TimestamptzString @default(dbgenerated("now()"))
+  updatedAt        TimestamptzString @default(dbgenerated("now()"))
+
+  // Relations: composite foreign keys guarantee that an approval cannot be associated
+  // with a recoveryAction, incident, or user that do not belong to each other
+  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  incident       Incident       @relation(fields: [incidentId, userId], references: [id, userId], onDelete: Cascade)
+  recoveryAction RecoveryAction @relation(fields: [recoveryActionId, incidentId], references: [id, incidentId], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([incidentId])
+  @@index([recoveryActionId])
+  @@index([recoveryActionId, status])
+  @@index([status])
+  @@index([status, expiresAt])
+}
+
+/// Immutable append-oriented audit log for the complete security chain.
+/// Traces: Incident → Evidence → AgentRun → Recommendation → Policy →
+///         Approval → Execution → Provider Result → Verification
+///
+/// SECURITY: NEVER store secrets, access tokens, passwords, or raw credentials.
+/// Records are append-only and must not be destructively updated.
+///
+/// Lifecycle: Audit records outlive the entities they describe. If a User or Incident
+/// is deleted, the foreign key is set to NULL (onDelete: SetNull) to preserve the audit trail.
+model AuditLog {
+  id            String         @id @default(uuid())
+  userId        String?
+  incidentId    String?
+  actorType     AuditActorType
+  /// Who acted: userId, agentRunId, system component name, or provider name
+  actorId       String?
+  /// Action performed: "INCIDENT_CREATED", "AGENT_RUN_STARTED", "ACTION_PROPOSED",
+  /// "APPROVAL_REQUESTED", "ACTION_EXECUTED", "VERIFICATION_COMPLETED", etc.
+  actionType    String
+  /// Resource type affected: "incident", "connected_account", "recovery_action"
+  targetType    String?
+  /// Resource ID affected
+  targetId      String?
+  /// Outcome: "SUCCESS", "FAILURE", "PARTIAL"
+  result        String?
+  /// Structured audit metadata (JSON). No secrets. Key IDs, result codes, summaries.
+  metadata      Json?
+  /// Correlation ID linking related audit entries across an agent chain
+  correlationId String?
+  /// Immutable timestamp of when this event occurred (append-only)
+  occurredAt    TimestamptzString @default(dbgenerated("now()"))
+
+  // Relations: audit records outlive the entities they describe; deleting a user or incident sets foreign keys to NULL
+  user     User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  incident Incident? @relation(fields: [incidentId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([incidentId])
+  @@index([actorType])
+  @@index([actionType])
+  @@index([correlationId])
+  @@index([occurredAt])
+  @@index([userId, occurredAt])
+}

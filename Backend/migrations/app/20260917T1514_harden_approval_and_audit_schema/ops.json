@@ -1,0 +1,498 @@
+[
+  {
+    "id": "unique.incident.incident_id_userId_key",
+    "label": "Add unique constraint on \"incident\" (id, userId)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "incident_id_userId_key",
+        "table": "incident"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"incident_id_userId_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "incident_id_userId_key",
+          "public",
+          "\"public\".\"incident\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"incident_id_userId_key\"",
+        "sql": "ALTER TABLE \"public\".\"incident\" ADD CONSTRAINT \"incident_id_userId_key\" UNIQUE (\"id\", \"userId\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"incident_id_userId_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "incident_id_userId_key",
+          "public",
+          "\"public\".\"incident\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.recoveryAction.recoveryAction_id_incidentId_key",
+    "label": "Add unique constraint on \"recoveryAction\" (id, incidentId)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "recoveryAction_id_incidentId_key",
+        "table": "recoveryAction"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"recoveryAction_id_incidentId_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "recoveryAction_id_incidentId_key",
+          "public",
+          "\"public\".\"recoveryAction\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"recoveryAction_id_incidentId_key\"",
+        "sql": "ALTER TABLE \"public\".\"recoveryAction\" ADD CONSTRAINT \"recoveryAction_id_incidentId_key\" UNIQUE (\"id\", \"incidentId\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"recoveryAction_id_incidentId_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "recoveryAction_id_incidentId_key",
+          "public",
+          "\"public\".\"recoveryAction\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "dropConstraint.auditLog.auditLog_userId_fkey",
+    "label": "Drop constraint \"auditLog_userId_fkey\" on \"auditLog\"",
+    "operationClass": "destructive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "auditLog_userId_fkey",
+        "table": "auditLog"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"auditLog_userId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "auditLog_userId_fkey",
+          "public",
+          "\"public\".\"auditLog\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "drop constraint \"auditLog_userId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"auditLog\" DROP CONSTRAINT \"auditLog_userId_fkey\""
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"auditLog_userId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "auditLog_userId_fkey",
+          "public",
+          "\"public\".\"auditLog\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "alterNullability.dropNotNull.auditLog.userId",
+    "label": "Drop NOT NULL on \"auditLog\".\"userId\"",
+    "operationClass": "widening",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "userId",
+        "table": "auditLog"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"userId\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "auditLog",
+          "userId"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "drop NOT NULL on \"userId\"",
+        "sql": "ALTER TABLE \"public\".\"auditLog\" ALTER COLUMN \"userId\" DROP NOT NULL"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"userId\" is nullable",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3 AND \"is_nullable\" = $4)) AS \"result\"",
+        "params": [
+          "public",
+          "auditLog",
+          "userId",
+          "YES"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.auditLog.auditLog_userId_fkey",
+    "label": "Add foreign key \"auditLog_userId_fkey\" on \"auditLog\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "auditLog_userId_fkey",
+        "table": "auditLog"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"auditLog_userId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "auditLog_userId_fkey",
+          "public",
+          "\"public\".\"auditLog\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"auditLog_userId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"auditLog\"\nADD CONSTRAINT \"auditLog_userId_fkey\"\nFOREIGN KEY (\"userId\")\nREFERENCES \"public\".\"user\" (\"id\")\nON DELETE SET NULL"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"auditLog_userId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "auditLog_userId_fkey",
+          "public",
+          "\"public\".\"auditLog\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "dropConstraint.approval.approval_recoveryActionId_fkey",
+    "label": "Drop constraint \"approval_recoveryActionId_fkey\" on \"approval\"",
+    "operationClass": "destructive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "approval_recoveryActionId_fkey",
+        "table": "approval"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"approval_recoveryActionId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "approval_recoveryActionId_fkey",
+          "public",
+          "\"public\".\"approval\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "drop constraint \"approval_recoveryActionId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"approval\" DROP CONSTRAINT \"approval_recoveryActionId_fkey\""
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"approval_recoveryActionId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "approval_recoveryActionId_fkey",
+          "public",
+          "\"public\".\"approval\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "dropConstraint.approval.approval_incidentId_fkey",
+    "label": "Drop constraint \"approval_incidentId_fkey\" on \"approval\"",
+    "operationClass": "destructive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "approval_incidentId_fkey",
+        "table": "approval"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"approval_incidentId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "approval_incidentId_fkey",
+          "public",
+          "\"public\".\"approval\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "drop constraint \"approval_incidentId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"approval\" DROP CONSTRAINT \"approval_incidentId_fkey\""
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"approval_incidentId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "approval_incidentId_fkey",
+          "public",
+          "\"public\".\"approval\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.approval.approval_incidentId_userId_fkey",
+    "label": "Add foreign key \"approval_incidentId_userId_fkey\" on \"approval\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "approval_incidentId_userId_fkey",
+        "table": "approval"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"approval_incidentId_userId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "approval_incidentId_userId_fkey",
+          "public",
+          "\"public\".\"approval\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"approval_incidentId_userId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"approval\"\nADD CONSTRAINT \"approval_incidentId_userId_fkey\"\nFOREIGN KEY (\"incidentId\", \"userId\")\nREFERENCES \"public\".\"incident\" (\"id\", \"userId\")\nON DELETE CASCADE"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"approval_incidentId_userId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "approval_incidentId_userId_fkey",
+          "public",
+          "\"public\".\"approval\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.approval.approval_recoveryActionId_incidentId_fkey",
+    "label": "Add foreign key \"approval_recoveryActionId_incidentId_fkey\" on \"approval\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "approval_recoveryActionId_incidentId_fkey",
+        "table": "approval"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"approval_recoveryActionId_incidentId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "approval_recoveryActionId_incidentId_fkey",
+          "public",
+          "\"public\".\"approval\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"approval_recoveryActionId_incidentId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"approval\"\nADD CONSTRAINT \"approval_recoveryActionId_incidentId_fkey\"\nFOREIGN KEY (\"recoveryActionId\", \"incidentId\")\nREFERENCES \"public\".\"recoveryAction\" (\"id\", \"incidentId\")\nON DELETE CASCADE"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"approval_recoveryActionId_incidentId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "approval_recoveryActionId_incidentId_fkey",
+          "public",
+          "\"public\".\"approval\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.approval.approval_incidentId_userId_idx_093a35a7",
+    "label": "Create index \"approval_incidentId_userId_idx_093a35a7\" on \"approval\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "approval_incidentId_userId_idx_093a35a7",
+        "table": "approval"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"approval_incidentId_userId_idx_093a35a7\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"approval_incidentId_userId_idx_093a35a7\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"approval_incidentId_userId_idx_093a35a7\"",
+        "sql": "CREATE INDEX \"approval_incidentId_userId_idx_093a35a7\" ON \"public\".\"approval\" (\"incidentId\", \"userId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"approval_incidentId_userId_idx_093a35a7\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"approval_incidentId_userId_idx_093a35a7\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.approval.approval_recoveryActionId_incidentId_idx_e99d4b98",
+    "label": "Create index \"approval_recoveryActionId_incidentId_idx_e99d4b98\" on \"approval\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "approval_recoveryActionId_incidentId_idx_e99d4b98",
+        "table": "approval"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"approval_recoveryActionId_incidentId_idx_e99d4b98\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"approval_recoveryActionId_incidentId_idx_e99d4b98\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"approval_recoveryActionId_incidentId_idx_e99d4b98\"",
+        "sql": "CREATE INDEX \"approval_recoveryActionId_incidentId_idx_e99d4b98\" ON \"public\".\"approval\" (\"recoveryActionId\", \"incidentId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"approval_recoveryActionId_incidentId_idx_e99d4b98\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"approval_recoveryActionId_incidentId_idx_e99d4b98\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.approval.approval_recoveryActionId_status_idx_745c24c6",
+    "label": "Create index \"approval_recoveryActionId_status_idx_745c24c6\" on \"approval\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "approval_recoveryActionId_status_idx_745c24c6",
+        "table": "approval"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"approval_recoveryActionId_status_idx_745c24c6\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"approval_recoveryActionId_status_idx_745c24c6\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"approval_recoveryActionId_status_idx_745c24c6\"",
+        "sql": "CREATE INDEX \"approval_recoveryActionId_status_idx_745c24c6\" ON \"public\".\"approval\" (\"recoveryActionId\", \"status\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"approval_recoveryActionId_status_idx_745c24c6\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"approval_recoveryActionId_status_idx_745c24c6\""
+        ]
+      }
+    ]
+  }
+]

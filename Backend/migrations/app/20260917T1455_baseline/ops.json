@@ -1,0 +1,2845 @@
+[
+  {
+    "id": "schema.public",
+    "label": "Create schema \"public\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres"
+    },
+    "precheck": [],
+    "execute": [
+      {
+        "description": "Create schema \"public\"",
+        "sql": "CREATE SCHEMA IF NOT EXISTS \"public\"",
+        "params": []
+      }
+    ],
+    "postcheck": []
+  },
+  {
+    "id": "table.agentRun",
+    "label": "Create table \"agentRun\"",
+    "summary": "Creates table \"agentRun\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "agentRun"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"agentRun\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"agentRun\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"agentRun\"",
+        "sql": "CREATE TABLE \"public\".\"agentRun\" (\n  \"agentType\" text NOT NULL,\n  \"completedAt\" timestamptz,\n  \"correlationId\" text,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"errorMessage\" text,\n  \"id\" text NOT NULL,\n  \"incidentId\" text NOT NULL,\n  \"modelId\" text,\n  \"modelProvider\" text,\n  \"resultSummary\" json,\n  \"startedAt\" timestamptz,\n  \"status\" text DEFAULT 'PENDING' NOT NULL,\n  \"triggerSource\" text,\n  \"updatedAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"userId\" text NOT NULL,\n  PRIMARY KEY (\"id\"),\n  CONSTRAINT \"agentRun_agentType_check_b5485c07\" CHECK (\"agentType\" IN ('ORCHESTRATOR', 'PLANNER', 'INVESTIGATOR', 'VERIFIER')),\n  CONSTRAINT \"agentRun_status_check_4cbea06c\" CHECK (\"status\" IN ('PENDING', 'RUNNING', 'COMPLETED', 'FAILED', 'CANCELLED'))\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"agentRun\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"agentRun\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.approval",
+    "label": "Create table \"approval\"",
+    "summary": "Creates table \"approval\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "approval"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"approval\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"approval\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"approval\"",
+        "sql": "CREATE TABLE \"public\".\"approval\" (\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"decidedAt\" timestamptz,\n  \"decisionMetadata\" json,\n  \"expiresAt\" timestamptz,\n  \"id\" text NOT NULL,\n  \"incidentId\" text NOT NULL,\n  \"recoveryActionId\" text NOT NULL,\n  \"requestedAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"status\" text DEFAULT 'PENDING' NOT NULL,\n  \"updatedAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"userId\" text NOT NULL,\n  PRIMARY KEY (\"id\"),\n  CONSTRAINT \"approval_status_check_fcf6234d\" CHECK (\"status\" IN ('PENDING', 'APPROVED', 'REJECTED', 'EXPIRED'))\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"approval\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"approval\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.auditLog",
+    "label": "Create table \"auditLog\"",
+    "summary": "Creates table \"auditLog\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "auditLog"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"auditLog\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"auditLog\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"auditLog\"",
+        "sql": "CREATE TABLE \"public\".\"auditLog\" (\n  \"actionType\" text NOT NULL,\n  \"actorId\" text,\n  \"actorType\" text NOT NULL,\n  \"correlationId\" text,\n  \"id\" text NOT NULL,\n  \"incidentId\" text,\n  \"metadata\" json,\n  \"occurredAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"result\" text,\n  \"targetId\" text,\n  \"targetType\" text,\n  \"userId\" text NOT NULL,\n  PRIMARY KEY (\"id\"),\n  CONSTRAINT \"auditLog_actorType_check_af47c96a\" CHECK (\"actorType\" IN ('USER', 'SYSTEM', 'AGENT', 'PROVIDER'))\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"auditLog\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"auditLog\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.connectedAccount",
+    "label": "Create table \"connectedAccount\"",
+    "summary": "Creates table \"connectedAccount\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "connectedAccount"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"connectedAccount\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"connectedAccount\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"connectedAccount\"",
+        "sql": "CREATE TABLE \"public\".\"connectedAccount\" (\n  \"accessTokenCiphertext\" text,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"grantedScopes\" text,\n  \"id\" text NOT NULL,\n  \"lastSyncAt\" timestamptz,\n  \"provider\" text NOT NULL,\n  \"providerAccountId\" text NOT NULL,\n  \"providerDisplayName\" text,\n  \"refreshTokenCiphertext\" text,\n  \"status\" text DEFAULT 'ACTIVE' NOT NULL,\n  \"tokenExpiresAt\" timestamptz,\n  \"updatedAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"userId\" text NOT NULL,\n  PRIMARY KEY (\"id\"),\n  CONSTRAINT \"connectedAccount_provider_check_9bb84945\" CHECK (\"provider\" IN ('GOOGLE', 'GITHUB', 'AWS')),\n  CONSTRAINT \"connectedAccount_status_check_0f2376c6\" CHECK (\"status\" IN ('ACTIVE', 'INACTIVE', 'REVOKED', 'ERROR'))\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"connectedAccount\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"connectedAccount\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.evidence",
+    "label": "Create table \"evidence\"",
+    "summary": "Creates table \"evidence\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "evidence"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"evidence\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"evidence\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"evidence\"",
+        "sql": "CREATE TABLE \"public\".\"evidence\" (\n  \"confidence\" float8,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"eventId\" text,\n  \"evidenceData\" json,\n  \"evidenceType\" text NOT NULL,\n  \"id\" text NOT NULL,\n  \"incidentId\" text NOT NULL,\n  \"source\" text,\n  \"updatedAt\" timestamptz DEFAULT (now()) NOT NULL,\n  PRIMARY KEY (\"id\"),\n  CONSTRAINT \"evidence_source_check_a292e1e9\" CHECK (\"source\" IN ('GOOGLE', 'GITHUB', 'AWS'))\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"evidence\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"evidence\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.incident",
+    "label": "Create table \"incident\"",
+    "summary": "Creates table \"incident\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "incident"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"incident\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"incident\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"incident\"",
+        "sql": "CREATE TABLE \"public\".\"incident\" (\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"detectionSource\" text,\n  \"id\" text NOT NULL,\n  \"resolvedAt\" timestamptz,\n  \"severity\" text NOT NULL,\n  \"startedAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"status\" text DEFAULT 'OPEN' NOT NULL,\n  \"summary\" text,\n  \"title\" text NOT NULL,\n  \"updatedAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"userId\" text NOT NULL,\n  PRIMARY KEY (\"id\"),\n  CONSTRAINT \"incident_severity_check_10d91c56\" CHECK (\"severity\" IN ('CRITICAL', 'HIGH', 'MEDIUM', 'LOW', 'INFO')),\n  CONSTRAINT \"incident_status_check_e5ef0348\" CHECK (\"status\" IN ('OPEN', 'INVESTIGATING', 'CONTAINMENT_REQUIRED', 'RECOVERY_REQUIRED', 'VERIFYING', 'RESOLVED', 'CLOSED'))\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"incident\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"incident\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.recoveryAction",
+    "label": "Create table \"recoveryAction\"",
+    "summary": "Creates table \"recoveryAction\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "recoveryAction"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"recoveryAction\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"recoveryAction\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"recoveryAction\"",
+        "sql": "CREATE TABLE \"public\".\"recoveryAction\" (\n  \"actionType\" text NOT NULL,\n  \"connectedAccountId\" text,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"errorMessage\" text,\n  \"executedAt\" timestamptz,\n  \"id\" text NOT NULL,\n  \"incidentId\" text NOT NULL,\n  \"proposedAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"providerResult\" json,\n  \"riskLevel\" text NOT NULL,\n  \"status\" text DEFAULT 'PROPOSED' NOT NULL,\n  \"updatedAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"verificationStatus\" text,\n  \"verifiedAt\" timestamptz,\n  PRIMARY KEY (\"id\"),\n  CONSTRAINT \"recoveryAction_actionType_check_a6d3d2ee\" CHECK (\"actionType\" IN ('REVOKE_OAUTH', 'REVOKE_TOKEN', 'REMOVE_SSH_KEY', 'TERMINATE_SESSION', 'DISABLE_INTEGRATION', 'ROTATE_CREDENTIAL', 'SECURITY_CONFIG')),\n  CONSTRAINT \"recoveryAction_riskLevel_check_485116de\" CHECK (\"riskLevel\" IN ('CRITICAL', 'HIGH', 'MEDIUM', 'LOW', 'INFO')),\n  CONSTRAINT \"recoveryAction_status_check_396632df\" CHECK (\"status\" IN ('PROPOSED', 'PENDING_APPROVAL', 'APPROVED', 'EXECUTING', 'COMPLETED', 'FAILED', 'REJECTED', 'CANCELLED'))\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"recoveryAction\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"recoveryAction\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.securityEvent",
+    "label": "Create table \"securityEvent\"",
+    "summary": "Creates table \"securityEvent\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "securityEvent"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"securityEvent\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"securityEvent\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"securityEvent\"",
+        "sql": "CREATE TABLE \"public\".\"securityEvent\" (\n  \"connectedAccountId\" text,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"deviceMetadata\" json,\n  \"eventData\" json,\n  \"eventType\" text NOT NULL,\n  \"id\" text NOT NULL,\n  \"incidentId\" text,\n  \"locationMetadata\" json,\n  \"occurredAt\" timestamptz,\n  \"provider\" text NOT NULL,\n  \"providerEventId\" text,\n  \"severity\" text,\n  \"sourceIp\" text,\n  \"status\" text DEFAULT 'RAW' NOT NULL,\n  \"updatedAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"userId\" text NOT NULL,\n  PRIMARY KEY (\"id\"),\n  CONSTRAINT \"securityEvent_provider_check_9bb84945\" CHECK (\"provider\" IN ('GOOGLE', 'GITHUB', 'AWS')),\n  CONSTRAINT \"securityEvent_severity_check_10d91c56\" CHECK (\"severity\" IN ('CRITICAL', 'HIGH', 'MEDIUM', 'LOW', 'INFO')),\n  CONSTRAINT \"securityEvent_status_check_2e7f7fff\" CHECK (\"status\" IN ('RAW', 'NORMALIZED', 'ANALYZED', 'CORRELATED', 'DISMISSED'))\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"securityEvent\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"securityEvent\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.user",
+    "label": "Create table \"user\"",
+    "summary": "Creates table \"user\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "user"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"user\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"user\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"user\"",
+        "sql": "CREATE TABLE \"public\".\"user\" (\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"displayName\" text,\n  \"email\" text NOT NULL,\n  \"id\" text NOT NULL,\n  \"status\" text DEFAULT 'ACTIVE' NOT NULL,\n  \"updatedAt\" timestamptz DEFAULT (now()) NOT NULL,\n  PRIMARY KEY (\"id\"),\n  CONSTRAINT \"user_status_check_0f2376c6\" CHECK (\"status\" IN ('ACTIVE', 'INACTIVE', 'REVOKED', 'ERROR'))\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"user\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"user\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.connectedAccount.connectedAccount_userId_provider_providerAccountId_key",
+    "label": "Add unique constraint on \"connectedAccount\" (userId, provider, providerAccountId)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "connectedAccount_userId_provider_providerAccountId_key",
+        "table": "connectedAccount"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"connectedAccount_userId_provider_providerAccountId_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "connectedAccount_userId_provider_providerAccountId_key",
+          "public",
+          "\"public\".\"connectedAccount\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"connectedAccount_userId_provider_providerAccountId_key\"",
+        "sql": "ALTER TABLE \"public\".\"connectedAccount\" ADD CONSTRAINT \"connectedAccount_userId_provider_providerAccountId_key\" UNIQUE (\"userId\", \"provider\", \"providerAccountId\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"connectedAccount_userId_provider_providerAccountId_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "connectedAccount_userId_provider_providerAccountId_key",
+          "public",
+          "\"public\".\"connectedAccount\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.securityEvent.securityEvent_connectedAccountId_providerEventId_key",
+    "label": "Add unique constraint on \"securityEvent\" (connectedAccountId, providerEventId)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "securityEvent_connectedAccountId_providerEventId_key",
+        "table": "securityEvent"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"securityEvent_connectedAccountId_providerEventId_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "securityEvent_connectedAccountId_providerEventId_key",
+          "public",
+          "\"public\".\"securityEvent\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"securityEvent_connectedAccountId_providerEventId_key\"",
+        "sql": "ALTER TABLE \"public\".\"securityEvent\" ADD CONSTRAINT \"securityEvent_connectedAccountId_providerEventId_key\" UNIQUE (\"connectedAccountId\", \"providerEventId\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"securityEvent_connectedAccountId_providerEventId_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "securityEvent_connectedAccountId_providerEventId_key",
+          "public",
+          "\"public\".\"securityEvent\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.user.user_email_key",
+    "label": "Add unique constraint on \"user\" (email)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "user_email_key",
+        "table": "user"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"user_email_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "user_email_key",
+          "public",
+          "\"public\".\"user\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"user_email_key\"",
+        "sql": "ALTER TABLE \"public\".\"user\" ADD CONSTRAINT \"user_email_key\" UNIQUE (\"email\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"user_email_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "user_email_key",
+          "public",
+          "\"public\".\"user\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.agentRun.agentRun_agentType_idx_d542af70",
+    "label": "Create index \"agentRun_agentType_idx_d542af70\" on \"agentRun\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "agentRun_agentType_idx_d542af70",
+        "table": "agentRun"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"agentRun_agentType_idx_d542af70\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"agentRun_agentType_idx_d542af70\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"agentRun_agentType_idx_d542af70\"",
+        "sql": "CREATE INDEX \"agentRun_agentType_idx_d542af70\" ON \"public\".\"agentRun\" (\"agentType\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"agentRun_agentType_idx_d542af70\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"agentRun_agentType_idx_d542af70\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.agentRun.agentRun_correlationId_idx_d20f6416",
+    "label": "Create index \"agentRun_correlationId_idx_d20f6416\" on \"agentRun\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "agentRun_correlationId_idx_d20f6416",
+        "table": "agentRun"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"agentRun_correlationId_idx_d20f6416\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"agentRun_correlationId_idx_d20f6416\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"agentRun_correlationId_idx_d20f6416\"",
+        "sql": "CREATE INDEX \"agentRun_correlationId_idx_d20f6416\" ON \"public\".\"agentRun\" (\"correlationId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"agentRun_correlationId_idx_d20f6416\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"agentRun_correlationId_idx_d20f6416\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.agentRun.agentRun_createdAt_idx_9575dbd7",
+    "label": "Create index \"agentRun_createdAt_idx_9575dbd7\" on \"agentRun\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "agentRun_createdAt_idx_9575dbd7",
+        "table": "agentRun"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"agentRun_createdAt_idx_9575dbd7\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"agentRun_createdAt_idx_9575dbd7\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"agentRun_createdAt_idx_9575dbd7\"",
+        "sql": "CREATE INDEX \"agentRun_createdAt_idx_9575dbd7\" ON \"public\".\"agentRun\" (\"createdAt\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"agentRun_createdAt_idx_9575dbd7\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"agentRun_createdAt_idx_9575dbd7\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.agentRun.agentRun_incidentId_idx_20b6f3c9",
+    "label": "Create index \"agentRun_incidentId_idx_20b6f3c9\" on \"agentRun\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "agentRun_incidentId_idx_20b6f3c9",
+        "table": "agentRun"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"agentRun_incidentId_idx_20b6f3c9\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"agentRun_incidentId_idx_20b6f3c9\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"agentRun_incidentId_idx_20b6f3c9\"",
+        "sql": "CREATE INDEX \"agentRun_incidentId_idx_20b6f3c9\" ON \"public\".\"agentRun\" (\"incidentId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"agentRun_incidentId_idx_20b6f3c9\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"agentRun_incidentId_idx_20b6f3c9\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.agentRun.agentRun_status_idx_e98638ab",
+    "label": "Create index \"agentRun_status_idx_e98638ab\" on \"agentRun\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "agentRun_status_idx_e98638ab",
+        "table": "agentRun"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"agentRun_status_idx_e98638ab\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"agentRun_status_idx_e98638ab\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"agentRun_status_idx_e98638ab\"",
+        "sql": "CREATE INDEX \"agentRun_status_idx_e98638ab\" ON \"public\".\"agentRun\" (\"status\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"agentRun_status_idx_e98638ab\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"agentRun_status_idx_e98638ab\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.agentRun.agentRun_userId_idx_a489d58a",
+    "label": "Create index \"agentRun_userId_idx_a489d58a\" on \"agentRun\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "agentRun_userId_idx_a489d58a",
+        "table": "agentRun"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"agentRun_userId_idx_a489d58a\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"agentRun_userId_idx_a489d58a\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"agentRun_userId_idx_a489d58a\"",
+        "sql": "CREATE INDEX \"agentRun_userId_idx_a489d58a\" ON \"public\".\"agentRun\" (\"userId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"agentRun_userId_idx_a489d58a\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"agentRun_userId_idx_a489d58a\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.approval.approval_incidentId_idx_20b6f3c9",
+    "label": "Create index \"approval_incidentId_idx_20b6f3c9\" on \"approval\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "approval_incidentId_idx_20b6f3c9",
+        "table": "approval"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"approval_incidentId_idx_20b6f3c9\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"approval_incidentId_idx_20b6f3c9\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"approval_incidentId_idx_20b6f3c9\"",
+        "sql": "CREATE INDEX \"approval_incidentId_idx_20b6f3c9\" ON \"public\".\"approval\" (\"incidentId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"approval_incidentId_idx_20b6f3c9\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"approval_incidentId_idx_20b6f3c9\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.approval.approval_recoveryActionId_idx_44a41b4e",
+    "label": "Create index \"approval_recoveryActionId_idx_44a41b4e\" on \"approval\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "approval_recoveryActionId_idx_44a41b4e",
+        "table": "approval"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"approval_recoveryActionId_idx_44a41b4e\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"approval_recoveryActionId_idx_44a41b4e\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"approval_recoveryActionId_idx_44a41b4e\"",
+        "sql": "CREATE INDEX \"approval_recoveryActionId_idx_44a41b4e\" ON \"public\".\"approval\" (\"recoveryActionId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"approval_recoveryActionId_idx_44a41b4e\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"approval_recoveryActionId_idx_44a41b4e\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.approval.approval_status_expiresAt_idx_c206f415",
+    "label": "Create index \"approval_status_expiresAt_idx_c206f415\" on \"approval\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "approval_status_expiresAt_idx_c206f415",
+        "table": "approval"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"approval_status_expiresAt_idx_c206f415\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"approval_status_expiresAt_idx_c206f415\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"approval_status_expiresAt_idx_c206f415\"",
+        "sql": "CREATE INDEX \"approval_status_expiresAt_idx_c206f415\" ON \"public\".\"approval\" (\"status\", \"expiresAt\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"approval_status_expiresAt_idx_c206f415\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"approval_status_expiresAt_idx_c206f415\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.approval.approval_status_idx_e98638ab",
+    "label": "Create index \"approval_status_idx_e98638ab\" on \"approval\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "approval_status_idx_e98638ab",
+        "table": "approval"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"approval_status_idx_e98638ab\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"approval_status_idx_e98638ab\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"approval_status_idx_e98638ab\"",
+        "sql": "CREATE INDEX \"approval_status_idx_e98638ab\" ON \"public\".\"approval\" (\"status\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"approval_status_idx_e98638ab\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"approval_status_idx_e98638ab\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.approval.approval_userId_idx_a489d58a",
+    "label": "Create index \"approval_userId_idx_a489d58a\" on \"approval\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "approval_userId_idx_a489d58a",
+        "table": "approval"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"approval_userId_idx_a489d58a\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"approval_userId_idx_a489d58a\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"approval_userId_idx_a489d58a\"",
+        "sql": "CREATE INDEX \"approval_userId_idx_a489d58a\" ON \"public\".\"approval\" (\"userId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"approval_userId_idx_a489d58a\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"approval_userId_idx_a489d58a\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.auditLog.auditLog_actionType_idx_591ddff2",
+    "label": "Create index \"auditLog_actionType_idx_591ddff2\" on \"auditLog\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "auditLog_actionType_idx_591ddff2",
+        "table": "auditLog"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"auditLog_actionType_idx_591ddff2\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"auditLog_actionType_idx_591ddff2\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"auditLog_actionType_idx_591ddff2\"",
+        "sql": "CREATE INDEX \"auditLog_actionType_idx_591ddff2\" ON \"public\".\"auditLog\" (\"actionType\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"auditLog_actionType_idx_591ddff2\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"auditLog_actionType_idx_591ddff2\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.auditLog.auditLog_actorType_idx_fc3b1214",
+    "label": "Create index \"auditLog_actorType_idx_fc3b1214\" on \"auditLog\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "auditLog_actorType_idx_fc3b1214",
+        "table": "auditLog"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"auditLog_actorType_idx_fc3b1214\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"auditLog_actorType_idx_fc3b1214\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"auditLog_actorType_idx_fc3b1214\"",
+        "sql": "CREATE INDEX \"auditLog_actorType_idx_fc3b1214\" ON \"public\".\"auditLog\" (\"actorType\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"auditLog_actorType_idx_fc3b1214\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"auditLog_actorType_idx_fc3b1214\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.auditLog.auditLog_correlationId_idx_d20f6416",
+    "label": "Create index \"auditLog_correlationId_idx_d20f6416\" on \"auditLog\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "auditLog_correlationId_idx_d20f6416",
+        "table": "auditLog"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"auditLog_correlationId_idx_d20f6416\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"auditLog_correlationId_idx_d20f6416\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"auditLog_correlationId_idx_d20f6416\"",
+        "sql": "CREATE INDEX \"auditLog_correlationId_idx_d20f6416\" ON \"public\".\"auditLog\" (\"correlationId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"auditLog_correlationId_idx_d20f6416\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"auditLog_correlationId_idx_d20f6416\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.auditLog.auditLog_incidentId_idx_20b6f3c9",
+    "label": "Create index \"auditLog_incidentId_idx_20b6f3c9\" on \"auditLog\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "auditLog_incidentId_idx_20b6f3c9",
+        "table": "auditLog"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"auditLog_incidentId_idx_20b6f3c9\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"auditLog_incidentId_idx_20b6f3c9\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"auditLog_incidentId_idx_20b6f3c9\"",
+        "sql": "CREATE INDEX \"auditLog_incidentId_idx_20b6f3c9\" ON \"public\".\"auditLog\" (\"incidentId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"auditLog_incidentId_idx_20b6f3c9\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"auditLog_incidentId_idx_20b6f3c9\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.auditLog.auditLog_occurredAt_idx_c6b89167",
+    "label": "Create index \"auditLog_occurredAt_idx_c6b89167\" on \"auditLog\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "auditLog_occurredAt_idx_c6b89167",
+        "table": "auditLog"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"auditLog_occurredAt_idx_c6b89167\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"auditLog_occurredAt_idx_c6b89167\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"auditLog_occurredAt_idx_c6b89167\"",
+        "sql": "CREATE INDEX \"auditLog_occurredAt_idx_c6b89167\" ON \"public\".\"auditLog\" (\"occurredAt\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"auditLog_occurredAt_idx_c6b89167\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"auditLog_occurredAt_idx_c6b89167\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.auditLog.auditLog_userId_idx_a489d58a",
+    "label": "Create index \"auditLog_userId_idx_a489d58a\" on \"auditLog\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "auditLog_userId_idx_a489d58a",
+        "table": "auditLog"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"auditLog_userId_idx_a489d58a\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"auditLog_userId_idx_a489d58a\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"auditLog_userId_idx_a489d58a\"",
+        "sql": "CREATE INDEX \"auditLog_userId_idx_a489d58a\" ON \"public\".\"auditLog\" (\"userId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"auditLog_userId_idx_a489d58a\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"auditLog_userId_idx_a489d58a\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.auditLog.auditLog_userId_occurredAt_idx_9003f3bb",
+    "label": "Create index \"auditLog_userId_occurredAt_idx_9003f3bb\" on \"auditLog\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "auditLog_userId_occurredAt_idx_9003f3bb",
+        "table": "auditLog"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"auditLog_userId_occurredAt_idx_9003f3bb\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"auditLog_userId_occurredAt_idx_9003f3bb\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"auditLog_userId_occurredAt_idx_9003f3bb\"",
+        "sql": "CREATE INDEX \"auditLog_userId_occurredAt_idx_9003f3bb\" ON \"public\".\"auditLog\" (\"userId\", \"occurredAt\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"auditLog_userId_occurredAt_idx_9003f3bb\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"auditLog_userId_occurredAt_idx_9003f3bb\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.connectedAccount.connectedAccount_provider_idx_faf3af28",
+    "label": "Create index \"connectedAccount_provider_idx_faf3af28\" on \"connectedAccount\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "connectedAccount_provider_idx_faf3af28",
+        "table": "connectedAccount"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"connectedAccount_provider_idx_faf3af28\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"connectedAccount_provider_idx_faf3af28\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"connectedAccount_provider_idx_faf3af28\"",
+        "sql": "CREATE INDEX \"connectedAccount_provider_idx_faf3af28\" ON \"public\".\"connectedAccount\" (\"provider\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"connectedAccount_provider_idx_faf3af28\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"connectedAccount_provider_idx_faf3af28\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.connectedAccount.connectedAccount_status_idx_e98638ab",
+    "label": "Create index \"connectedAccount_status_idx_e98638ab\" on \"connectedAccount\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "connectedAccount_status_idx_e98638ab",
+        "table": "connectedAccount"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"connectedAccount_status_idx_e98638ab\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"connectedAccount_status_idx_e98638ab\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"connectedAccount_status_idx_e98638ab\"",
+        "sql": "CREATE INDEX \"connectedAccount_status_idx_e98638ab\" ON \"public\".\"connectedAccount\" (\"status\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"connectedAccount_status_idx_e98638ab\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"connectedAccount_status_idx_e98638ab\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.connectedAccount.connectedAccount_userId_idx_a489d58a",
+    "label": "Create index \"connectedAccount_userId_idx_a489d58a\" on \"connectedAccount\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "connectedAccount_userId_idx_a489d58a",
+        "table": "connectedAccount"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"connectedAccount_userId_idx_a489d58a\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"connectedAccount_userId_idx_a489d58a\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"connectedAccount_userId_idx_a489d58a\"",
+        "sql": "CREATE INDEX \"connectedAccount_userId_idx_a489d58a\" ON \"public\".\"connectedAccount\" (\"userId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"connectedAccount_userId_idx_a489d58a\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"connectedAccount_userId_idx_a489d58a\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.evidence.evidence_eventId_idx_6a266d47",
+    "label": "Create index \"evidence_eventId_idx_6a266d47\" on \"evidence\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "evidence_eventId_idx_6a266d47",
+        "table": "evidence"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"evidence_eventId_idx_6a266d47\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"evidence_eventId_idx_6a266d47\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"evidence_eventId_idx_6a266d47\"",
+        "sql": "CREATE INDEX \"evidence_eventId_idx_6a266d47\" ON \"public\".\"evidence\" (\"eventId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"evidence_eventId_idx_6a266d47\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"evidence_eventId_idx_6a266d47\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.evidence.evidence_evidenceType_idx_8769f28a",
+    "label": "Create index \"evidence_evidenceType_idx_8769f28a\" on \"evidence\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "evidence_evidenceType_idx_8769f28a",
+        "table": "evidence"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"evidence_evidenceType_idx_8769f28a\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"evidence_evidenceType_idx_8769f28a\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"evidence_evidenceType_idx_8769f28a\"",
+        "sql": "CREATE INDEX \"evidence_evidenceType_idx_8769f28a\" ON \"public\".\"evidence\" (\"evidenceType\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"evidence_evidenceType_idx_8769f28a\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"evidence_evidenceType_idx_8769f28a\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.evidence.evidence_incidentId_idx_20b6f3c9",
+    "label": "Create index \"evidence_incidentId_idx_20b6f3c9\" on \"evidence\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "evidence_incidentId_idx_20b6f3c9",
+        "table": "evidence"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"evidence_incidentId_idx_20b6f3c9\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"evidence_incidentId_idx_20b6f3c9\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"evidence_incidentId_idx_20b6f3c9\"",
+        "sql": "CREATE INDEX \"evidence_incidentId_idx_20b6f3c9\" ON \"public\".\"evidence\" (\"incidentId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"evidence_incidentId_idx_20b6f3c9\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"evidence_incidentId_idx_20b6f3c9\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.incident.incident_severity_idx_5b070f41",
+    "label": "Create index \"incident_severity_idx_5b070f41\" on \"incident\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "incident_severity_idx_5b070f41",
+        "table": "incident"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"incident_severity_idx_5b070f41\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"incident_severity_idx_5b070f41\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"incident_severity_idx_5b070f41\"",
+        "sql": "CREATE INDEX \"incident_severity_idx_5b070f41\" ON \"public\".\"incident\" (\"severity\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"incident_severity_idx_5b070f41\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"incident_severity_idx_5b070f41\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.incident.incident_startedAt_idx_cac56236",
+    "label": "Create index \"incident_startedAt_idx_cac56236\" on \"incident\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "incident_startedAt_idx_cac56236",
+        "table": "incident"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"incident_startedAt_idx_cac56236\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"incident_startedAt_idx_cac56236\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"incident_startedAt_idx_cac56236\"",
+        "sql": "CREATE INDEX \"incident_startedAt_idx_cac56236\" ON \"public\".\"incident\" (\"startedAt\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"incident_startedAt_idx_cac56236\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"incident_startedAt_idx_cac56236\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.incident.incident_status_idx_e98638ab",
+    "label": "Create index \"incident_status_idx_e98638ab\" on \"incident\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "incident_status_idx_e98638ab",
+        "table": "incident"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"incident_status_idx_e98638ab\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"incident_status_idx_e98638ab\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"incident_status_idx_e98638ab\"",
+        "sql": "CREATE INDEX \"incident_status_idx_e98638ab\" ON \"public\".\"incident\" (\"status\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"incident_status_idx_e98638ab\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"incident_status_idx_e98638ab\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.incident.incident_userId_idx_a489d58a",
+    "label": "Create index \"incident_userId_idx_a489d58a\" on \"incident\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "incident_userId_idx_a489d58a",
+        "table": "incident"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"incident_userId_idx_a489d58a\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"incident_userId_idx_a489d58a\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"incident_userId_idx_a489d58a\"",
+        "sql": "CREATE INDEX \"incident_userId_idx_a489d58a\" ON \"public\".\"incident\" (\"userId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"incident_userId_idx_a489d58a\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"incident_userId_idx_a489d58a\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.incident.incident_userId_status_idx_e4a128ba",
+    "label": "Create index \"incident_userId_status_idx_e4a128ba\" on \"incident\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "incident_userId_status_idx_e4a128ba",
+        "table": "incident"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"incident_userId_status_idx_e4a128ba\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"incident_userId_status_idx_e4a128ba\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"incident_userId_status_idx_e4a128ba\"",
+        "sql": "CREATE INDEX \"incident_userId_status_idx_e4a128ba\" ON \"public\".\"incident\" (\"userId\", \"status\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"incident_userId_status_idx_e4a128ba\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"incident_userId_status_idx_e4a128ba\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.recoveryAction.recoveryAction_actionType_idx_591ddff2",
+    "label": "Create index \"recoveryAction_actionType_idx_591ddff2\" on \"recoveryAction\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "recoveryAction_actionType_idx_591ddff2",
+        "table": "recoveryAction"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"recoveryAction_actionType_idx_591ddff2\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"recoveryAction_actionType_idx_591ddff2\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"recoveryAction_actionType_idx_591ddff2\"",
+        "sql": "CREATE INDEX \"recoveryAction_actionType_idx_591ddff2\" ON \"public\".\"recoveryAction\" (\"actionType\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"recoveryAction_actionType_idx_591ddff2\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"recoveryAction_actionType_idx_591ddff2\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.recoveryAction.recoveryAction_connectedAccountId_idx_2443fc65",
+    "label": "Create index \"recoveryAction_connectedAccountId_idx_2443fc65\" on \"recoveryAction\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "recoveryAction_connectedAccountId_idx_2443fc65",
+        "table": "recoveryAction"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"recoveryAction_connectedAccountId_idx_2443fc65\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"recoveryAction_connectedAccountId_idx_2443fc65\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"recoveryAction_connectedAccountId_idx_2443fc65\"",
+        "sql": "CREATE INDEX \"recoveryAction_connectedAccountId_idx_2443fc65\" ON \"public\".\"recoveryAction\" (\"connectedAccountId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"recoveryAction_connectedAccountId_idx_2443fc65\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"recoveryAction_connectedAccountId_idx_2443fc65\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.recoveryAction.recoveryAction_incidentId_idx_20b6f3c9",
+    "label": "Create index \"recoveryAction_incidentId_idx_20b6f3c9\" on \"recoveryAction\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "recoveryAction_incidentId_idx_20b6f3c9",
+        "table": "recoveryAction"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"recoveryAction_incidentId_idx_20b6f3c9\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"recoveryAction_incidentId_idx_20b6f3c9\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"recoveryAction_incidentId_idx_20b6f3c9\"",
+        "sql": "CREATE INDEX \"recoveryAction_incidentId_idx_20b6f3c9\" ON \"public\".\"recoveryAction\" (\"incidentId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"recoveryAction_incidentId_idx_20b6f3c9\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"recoveryAction_incidentId_idx_20b6f3c9\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.recoveryAction.recoveryAction_riskLevel_idx_c37d366a",
+    "label": "Create index \"recoveryAction_riskLevel_idx_c37d366a\" on \"recoveryAction\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "recoveryAction_riskLevel_idx_c37d366a",
+        "table": "recoveryAction"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"recoveryAction_riskLevel_idx_c37d366a\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"recoveryAction_riskLevel_idx_c37d366a\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"recoveryAction_riskLevel_idx_c37d366a\"",
+        "sql": "CREATE INDEX \"recoveryAction_riskLevel_idx_c37d366a\" ON \"public\".\"recoveryAction\" (\"riskLevel\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"recoveryAction_riskLevel_idx_c37d366a\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"recoveryAction_riskLevel_idx_c37d366a\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.recoveryAction.recoveryAction_status_idx_e98638ab",
+    "label": "Create index \"recoveryAction_status_idx_e98638ab\" on \"recoveryAction\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "recoveryAction_status_idx_e98638ab",
+        "table": "recoveryAction"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"recoveryAction_status_idx_e98638ab\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"recoveryAction_status_idx_e98638ab\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"recoveryAction_status_idx_e98638ab\"",
+        "sql": "CREATE INDEX \"recoveryAction_status_idx_e98638ab\" ON \"public\".\"recoveryAction\" (\"status\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"recoveryAction_status_idx_e98638ab\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"recoveryAction_status_idx_e98638ab\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.securityEvent.securityEvent_connectedAccountId_idx_2443fc65",
+    "label": "Create index \"securityEvent_connectedAccountId_idx_2443fc65\" on \"securityEvent\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "securityEvent_connectedAccountId_idx_2443fc65",
+        "table": "securityEvent"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"securityEvent_connectedAccountId_idx_2443fc65\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"securityEvent_connectedAccountId_idx_2443fc65\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"securityEvent_connectedAccountId_idx_2443fc65\"",
+        "sql": "CREATE INDEX \"securityEvent_connectedAccountId_idx_2443fc65\" ON \"public\".\"securityEvent\" (\"connectedAccountId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"securityEvent_connectedAccountId_idx_2443fc65\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"securityEvent_connectedAccountId_idx_2443fc65\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.securityEvent.securityEvent_createdAt_idx_9575dbd7",
+    "label": "Create index \"securityEvent_createdAt_idx_9575dbd7\" on \"securityEvent\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "securityEvent_createdAt_idx_9575dbd7",
+        "table": "securityEvent"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"securityEvent_createdAt_idx_9575dbd7\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"securityEvent_createdAt_idx_9575dbd7\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"securityEvent_createdAt_idx_9575dbd7\"",
+        "sql": "CREATE INDEX \"securityEvent_createdAt_idx_9575dbd7\" ON \"public\".\"securityEvent\" (\"createdAt\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"securityEvent_createdAt_idx_9575dbd7\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"securityEvent_createdAt_idx_9575dbd7\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.securityEvent.securityEvent_eventType_idx_e4cf7742",
+    "label": "Create index \"securityEvent_eventType_idx_e4cf7742\" on \"securityEvent\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "securityEvent_eventType_idx_e4cf7742",
+        "table": "securityEvent"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"securityEvent_eventType_idx_e4cf7742\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"securityEvent_eventType_idx_e4cf7742\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"securityEvent_eventType_idx_e4cf7742\"",
+        "sql": "CREATE INDEX \"securityEvent_eventType_idx_e4cf7742\" ON \"public\".\"securityEvent\" (\"eventType\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"securityEvent_eventType_idx_e4cf7742\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"securityEvent_eventType_idx_e4cf7742\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.securityEvent.securityEvent_incidentId_idx_20b6f3c9",
+    "label": "Create index \"securityEvent_incidentId_idx_20b6f3c9\" on \"securityEvent\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "securityEvent_incidentId_idx_20b6f3c9",
+        "table": "securityEvent"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"securityEvent_incidentId_idx_20b6f3c9\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"securityEvent_incidentId_idx_20b6f3c9\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"securityEvent_incidentId_idx_20b6f3c9\"",
+        "sql": "CREATE INDEX \"securityEvent_incidentId_idx_20b6f3c9\" ON \"public\".\"securityEvent\" (\"incidentId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"securityEvent_incidentId_idx_20b6f3c9\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"securityEvent_incidentId_idx_20b6f3c9\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.securityEvent.securityEvent_occurredAt_idx_c6b89167",
+    "label": "Create index \"securityEvent_occurredAt_idx_c6b89167\" on \"securityEvent\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "securityEvent_occurredAt_idx_c6b89167",
+        "table": "securityEvent"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"securityEvent_occurredAt_idx_c6b89167\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"securityEvent_occurredAt_idx_c6b89167\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"securityEvent_occurredAt_idx_c6b89167\"",
+        "sql": "CREATE INDEX \"securityEvent_occurredAt_idx_c6b89167\" ON \"public\".\"securityEvent\" (\"occurredAt\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"securityEvent_occurredAt_idx_c6b89167\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"securityEvent_occurredAt_idx_c6b89167\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.securityEvent.securityEvent_provider_idx_faf3af28",
+    "label": "Create index \"securityEvent_provider_idx_faf3af28\" on \"securityEvent\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "securityEvent_provider_idx_faf3af28",
+        "table": "securityEvent"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"securityEvent_provider_idx_faf3af28\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"securityEvent_provider_idx_faf3af28\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"securityEvent_provider_idx_faf3af28\"",
+        "sql": "CREATE INDEX \"securityEvent_provider_idx_faf3af28\" ON \"public\".\"securityEvent\" (\"provider\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"securityEvent_provider_idx_faf3af28\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"securityEvent_provider_idx_faf3af28\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.securityEvent.securityEvent_severity_idx_5b070f41",
+    "label": "Create index \"securityEvent_severity_idx_5b070f41\" on \"securityEvent\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "securityEvent_severity_idx_5b070f41",
+        "table": "securityEvent"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"securityEvent_severity_idx_5b070f41\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"securityEvent_severity_idx_5b070f41\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"securityEvent_severity_idx_5b070f41\"",
+        "sql": "CREATE INDEX \"securityEvent_severity_idx_5b070f41\" ON \"public\".\"securityEvent\" (\"severity\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"securityEvent_severity_idx_5b070f41\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"securityEvent_severity_idx_5b070f41\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.securityEvent.securityEvent_status_idx_e98638ab",
+    "label": "Create index \"securityEvent_status_idx_e98638ab\" on \"securityEvent\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "securityEvent_status_idx_e98638ab",
+        "table": "securityEvent"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"securityEvent_status_idx_e98638ab\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"securityEvent_status_idx_e98638ab\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"securityEvent_status_idx_e98638ab\"",
+        "sql": "CREATE INDEX \"securityEvent_status_idx_e98638ab\" ON \"public\".\"securityEvent\" (\"status\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"securityEvent_status_idx_e98638ab\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"securityEvent_status_idx_e98638ab\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.securityEvent.securityEvent_userId_idx_a489d58a",
+    "label": "Create index \"securityEvent_userId_idx_a489d58a\" on \"securityEvent\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "securityEvent_userId_idx_a489d58a",
+        "table": "securityEvent"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"securityEvent_userId_idx_a489d58a\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"securityEvent_userId_idx_a489d58a\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"securityEvent_userId_idx_a489d58a\"",
+        "sql": "CREATE INDEX \"securityEvent_userId_idx_a489d58a\" ON \"public\".\"securityEvent\" (\"userId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"securityEvent_userId_idx_a489d58a\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"securityEvent_userId_idx_a489d58a\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.agentRun.agentRun_userId_fkey",
+    "label": "Add foreign key \"agentRun_userId_fkey\" on \"agentRun\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "agentRun_userId_fkey",
+        "table": "agentRun"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"agentRun_userId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "agentRun_userId_fkey",
+          "public",
+          "\"public\".\"agentRun\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"agentRun_userId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"agentRun\"\nADD CONSTRAINT \"agentRun_userId_fkey\"\nFOREIGN KEY (\"userId\")\nREFERENCES \"public\".\"user\" (\"id\")\nON DELETE CASCADE"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"agentRun_userId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "agentRun_userId_fkey",
+          "public",
+          "\"public\".\"agentRun\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.agentRun.agentRun_incidentId_fkey",
+    "label": "Add foreign key \"agentRun_incidentId_fkey\" on \"agentRun\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "agentRun_incidentId_fkey",
+        "table": "agentRun"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"agentRun_incidentId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "agentRun_incidentId_fkey",
+          "public",
+          "\"public\".\"agentRun\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"agentRun_incidentId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"agentRun\"\nADD CONSTRAINT \"agentRun_incidentId_fkey\"\nFOREIGN KEY (\"incidentId\")\nREFERENCES \"public\".\"incident\" (\"id\")\nON DELETE CASCADE"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"agentRun_incidentId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "agentRun_incidentId_fkey",
+          "public",
+          "\"public\".\"agentRun\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.approval.approval_userId_fkey",
+    "label": "Add foreign key \"approval_userId_fkey\" on \"approval\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "approval_userId_fkey",
+        "table": "approval"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"approval_userId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "approval_userId_fkey",
+          "public",
+          "\"public\".\"approval\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"approval_userId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"approval\"\nADD CONSTRAINT \"approval_userId_fkey\"\nFOREIGN KEY (\"userId\")\nREFERENCES \"public\".\"user\" (\"id\")\nON DELETE CASCADE"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"approval_userId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "approval_userId_fkey",
+          "public",
+          "\"public\".\"approval\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.approval.approval_incidentId_fkey",
+    "label": "Add foreign key \"approval_incidentId_fkey\" on \"approval\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "approval_incidentId_fkey",
+        "table": "approval"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"approval_incidentId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "approval_incidentId_fkey",
+          "public",
+          "\"public\".\"approval\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"approval_incidentId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"approval\"\nADD CONSTRAINT \"approval_incidentId_fkey\"\nFOREIGN KEY (\"incidentId\")\nREFERENCES \"public\".\"incident\" (\"id\")\nON DELETE CASCADE"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"approval_incidentId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "approval_incidentId_fkey",
+          "public",
+          "\"public\".\"approval\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.approval.approval_recoveryActionId_fkey",
+    "label": "Add foreign key \"approval_recoveryActionId_fkey\" on \"approval\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "approval_recoveryActionId_fkey",
+        "table": "approval"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"approval_recoveryActionId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "approval_recoveryActionId_fkey",
+          "public",
+          "\"public\".\"approval\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"approval_recoveryActionId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"approval\"\nADD CONSTRAINT \"approval_recoveryActionId_fkey\"\nFOREIGN KEY (\"recoveryActionId\")\nREFERENCES \"public\".\"recoveryAction\" (\"id\")\nON DELETE CASCADE"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"approval_recoveryActionId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "approval_recoveryActionId_fkey",
+          "public",
+          "\"public\".\"approval\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.auditLog.auditLog_userId_fkey",
+    "label": "Add foreign key \"auditLog_userId_fkey\" on \"auditLog\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "auditLog_userId_fkey",
+        "table": "auditLog"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"auditLog_userId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "auditLog_userId_fkey",
+          "public",
+          "\"public\".\"auditLog\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"auditLog_userId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"auditLog\"\nADD CONSTRAINT \"auditLog_userId_fkey\"\nFOREIGN KEY (\"userId\")\nREFERENCES \"public\".\"user\" (\"id\")\nON DELETE CASCADE"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"auditLog_userId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "auditLog_userId_fkey",
+          "public",
+          "\"public\".\"auditLog\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.auditLog.auditLog_incidentId_fkey",
+    "label": "Add foreign key \"auditLog_incidentId_fkey\" on \"auditLog\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "auditLog_incidentId_fkey",
+        "table": "auditLog"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"auditLog_incidentId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "auditLog_incidentId_fkey",
+          "public",
+          "\"public\".\"auditLog\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"auditLog_incidentId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"auditLog\"\nADD CONSTRAINT \"auditLog_incidentId_fkey\"\nFOREIGN KEY (\"incidentId\")\nREFERENCES \"public\".\"incident\" (\"id\")\nON DELETE SET NULL"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"auditLog_incidentId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "auditLog_incidentId_fkey",
+          "public",
+          "\"public\".\"auditLog\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.connectedAccount.connectedAccount_userId_fkey",
+    "label": "Add foreign key \"connectedAccount_userId_fkey\" on \"connectedAccount\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "connectedAccount_userId_fkey",
+        "table": "connectedAccount"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"connectedAccount_userId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "connectedAccount_userId_fkey",
+          "public",
+          "\"public\".\"connectedAccount\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"connectedAccount_userId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"connectedAccount\"\nADD CONSTRAINT \"connectedAccount_userId_fkey\"\nFOREIGN KEY (\"userId\")\nREFERENCES \"public\".\"user\" (\"id\")\nON DELETE CASCADE"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"connectedAccount_userId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "connectedAccount_userId_fkey",
+          "public",
+          "\"public\".\"connectedAccount\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.evidence.evidence_incidentId_fkey",
+    "label": "Add foreign key \"evidence_incidentId_fkey\" on \"evidence\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "evidence_incidentId_fkey",
+        "table": "evidence"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"evidence_incidentId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "evidence_incidentId_fkey",
+          "public",
+          "\"public\".\"evidence\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"evidence_incidentId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"evidence\"\nADD CONSTRAINT \"evidence_incidentId_fkey\"\nFOREIGN KEY (\"incidentId\")\nREFERENCES \"public\".\"incident\" (\"id\")\nON DELETE CASCADE"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"evidence_incidentId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "evidence_incidentId_fkey",
+          "public",
+          "\"public\".\"evidence\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.evidence.evidence_eventId_fkey",
+    "label": "Add foreign key \"evidence_eventId_fkey\" on \"evidence\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "evidence_eventId_fkey",
+        "table": "evidence"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"evidence_eventId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "evidence_eventId_fkey",
+          "public",
+          "\"public\".\"evidence\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"evidence_eventId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"evidence\"\nADD CONSTRAINT \"evidence_eventId_fkey\"\nFOREIGN KEY (\"eventId\")\nREFERENCES \"public\".\"securityEvent\" (\"id\")\nON DELETE SET NULL"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"evidence_eventId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "evidence_eventId_fkey",
+          "public",
+          "\"public\".\"evidence\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.incident.incident_userId_fkey",
+    "label": "Add foreign key \"incident_userId_fkey\" on \"incident\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "incident_userId_fkey",
+        "table": "incident"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"incident_userId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "incident_userId_fkey",
+          "public",
+          "\"public\".\"incident\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"incident_userId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"incident\"\nADD CONSTRAINT \"incident_userId_fkey\"\nFOREIGN KEY (\"userId\")\nREFERENCES \"public\".\"user\" (\"id\")\nON DELETE CASCADE"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"incident_userId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "incident_userId_fkey",
+          "public",
+          "\"public\".\"incident\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.recoveryAction.recoveryAction_incidentId_fkey",
+    "label": "Add foreign key \"recoveryAction_incidentId_fkey\" on \"recoveryAction\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "recoveryAction_incidentId_fkey",
+        "table": "recoveryAction"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"recoveryAction_incidentId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "recoveryAction_incidentId_fkey",
+          "public",
+          "\"public\".\"recoveryAction\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"recoveryAction_incidentId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"recoveryAction\"\nADD CONSTRAINT \"recoveryAction_incidentId_fkey\"\nFOREIGN KEY (\"incidentId\")\nREFERENCES \"public\".\"incident\" (\"id\")\nON DELETE CASCADE"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"recoveryAction_incidentId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "recoveryAction_incidentId_fkey",
+          "public",
+          "\"public\".\"recoveryAction\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.recoveryAction.recoveryAction_connectedAccountId_fkey",
+    "label": "Add foreign key \"recoveryAction_connectedAccountId_fkey\" on \"recoveryAction\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "recoveryAction_connectedAccountId_fkey",
+        "table": "recoveryAction"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"recoveryAction_connectedAccountId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "recoveryAction_connectedAccountId_fkey",
+          "public",
+          "\"public\".\"recoveryAction\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"recoveryAction_connectedAccountId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"recoveryAction\"\nADD CONSTRAINT \"recoveryAction_connectedAccountId_fkey\"\nFOREIGN KEY (\"connectedAccountId\")\nREFERENCES \"public\".\"connectedAccount\" (\"id\")\nON DELETE SET NULL"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"recoveryAction_connectedAccountId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "recoveryAction_connectedAccountId_fkey",
+          "public",
+          "\"public\".\"recoveryAction\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.securityEvent.securityEvent_userId_fkey",
+    "label": "Add foreign key \"securityEvent_userId_fkey\" on \"securityEvent\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "securityEvent_userId_fkey",
+        "table": "securityEvent"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"securityEvent_userId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "securityEvent_userId_fkey",
+          "public",
+          "\"public\".\"securityEvent\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"securityEvent_userId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"securityEvent\"\nADD CONSTRAINT \"securityEvent_userId_fkey\"\nFOREIGN KEY (\"userId\")\nREFERENCES \"public\".\"user\" (\"id\")\nON DELETE CASCADE"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"securityEvent_userId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "securityEvent_userId_fkey",
+          "public",
+          "\"public\".\"securityEvent\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.securityEvent.securityEvent_connectedAccountId_fkey",
+    "label": "Add foreign key \"securityEvent_connectedAccountId_fkey\" on \"securityEvent\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "securityEvent_connectedAccountId_fkey",
+        "table": "securityEvent"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"securityEvent_connectedAccountId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "securityEvent_connectedAccountId_fkey",
+          "public",
+          "\"public\".\"securityEvent\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"securityEvent_connectedAccountId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"securityEvent\"\nADD CONSTRAINT \"securityEvent_connectedAccountId_fkey\"\nFOREIGN KEY (\"connectedAccountId\")\nREFERENCES \"public\".\"connectedAccount\" (\"id\")\nON DELETE SET NULL"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"securityEvent_connectedAccountId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "securityEvent_connectedAccountId_fkey",
+          "public",
+          "\"public\".\"securityEvent\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.securityEvent.securityEvent_incidentId_fkey",
+    "label": "Add foreign key \"securityEvent_incidentId_fkey\" on \"securityEvent\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "securityEvent_incidentId_fkey",
+        "table": "securityEvent"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"securityEvent_incidentId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "securityEvent_incidentId_fkey",
+          "public",
+          "\"public\".\"securityEvent\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"securityEvent_incidentId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"securityEvent\"\nADD CONSTRAINT \"securityEvent_incidentId_fkey\"\nFOREIGN KEY (\"incidentId\")\nREFERENCES \"public\".\"incident\" (\"id\")\nON DELETE SET NULL"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"securityEvent_incidentId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "securityEvent_incidentId_fkey",
+          "public",
+          "\"public\".\"securityEvent\""
+        ]
+      }
+    ]
+  }
+]
