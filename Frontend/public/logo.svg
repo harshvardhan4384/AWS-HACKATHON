@@ -1,0 +1,15 @@
+<svg viewBox="0 0 200 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <g transform="translate(4, 4)">
+    <!-- Security Shield + Circular Recovery Loop + Core Node -->
+    <path d="M20 2C10 6 3 13 3 24C3 33 11 39 20 42C29 39 37 33 37 24C37 13 30 6 20 2Z" stroke="#06B6D4" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="#06B6D4" fill-opacity="0.08"/>
+    <!-- Circular Recovery Arrow Path inside shield -->
+    <path d="M20 12C15.0294 12 11 16.0294 11 21C11 25.9706 15.0294 30 20 30C23.5 30 26.5 28 28 25" stroke="#3B82F6" stroke-width="2" stroke-linecap="round"/>
+    <path d="M28 21V25H24" stroke="#3B82F6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    <!-- Central Identity Pulse Node -->
+    <circle cx="20" cy="21" r="3" fill="#10B981"/>
+  </g>
+  <!-- Wordmark RE:COVER -->
+  <text x="56" y="28" fill="#FFFFFF" font-family="Inter, Manrope, sans-serif" font-size="20" font-weight="700" letter-spacing="0.12em">RE<tspan fill="#06B6D4">:</tspan>COVER</text>
+  <text x="56" y="38" fill="#94A3B8" font-family="Inter, Manrope, sans-serif" font-size="8" font-weight="500" letter-spacing="0.2em">DIGITAL IMMUNE SYSTEM</text>
+</svg>
+
