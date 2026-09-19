@@ -1,122 +1,77 @@
-import { useState } from 'react'
-import heroImg from './assets/hero.png'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import './App.css'
+import React from 'react';
+import { SecurityProvider, useSecurity } from './context/SecurityContext';
+import { Header } from './components/common/Header';
+import { Sidebar } from './components/common/Sidebar';
+import { CommandPalette } from './components/common/CommandPalette';
+import { ToastContainer } from './components/common/ToastContainer';
+import { AuthModal } from './components/common/AuthModal';
+import { ConnectModal } from './components/common/ConnectModal';
 
-function App() {
-  const [count, setCount] = useState(0)
+// Pages
+import { LandingPage } from './pages/LandingPage';
+import { OverviewDashboard } from './pages/OverviewDashboard';
+import { IncidentsHub } from './pages/IncidentsHub';
+import { AiInvestigationPage } from './pages/AiInvestigationPage';
+import { AttackGraphPage } from './pages/AttackGraphPage';
+import { RecoveryCenterPage } from './pages/RecoveryCenterPage';
+import { TelemetryStreamPage } from './pages/TelemetryStreamPage';
+import { ConnectedAccountsPage } from './pages/ConnectedAccountsPage';
+import { SimulationPrototypePage } from './pages/SimulationPrototypePage';
+
+const AppContent = () => {
+  const { activeTab } = useSecurity();
+
+  if (activeTab === 'landing') {
+    return <LandingPage />;
+  }
+
+  const renderActivePage = () => {
+    switch (activeTab) {
+      case 'dashboard':
+        return <OverviewDashboard />;
+      case 'incidents':
+        return <IncidentsHub />;
+      case 'investigation':
+        return <AiInvestigationPage />;
+      case 'blast-radius':
+        return <AttackGraphPage />;
+      case 'recovery':
+        return <RecoveryCenterPage />;
+      case 'telemetry':
+        return <TelemetryStreamPage />;
+      case 'accounts':
+        return <ConnectedAccountsPage />;
+      case 'prototype':
+        return <SimulationPrototypePage />;
+      default:
+        return <OverviewDashboard />;
+    }
+  };
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
+    <div className="min-h-screen bg-surface text-on-surface flex flex-col">
+      <Sidebar />
+      <div className="lg:pl-64 flex flex-col min-h-screen">
+        <Header isLanding={false} />
+        <main className="flex-1 pt-20 p-4 sm:p-8 bg-surface">
+          <div className="max-w-7xl mx-auto w-full">
+            {renderActivePage()}
+          </div>
+        </main>
+      </div>
+    </div>
+  );
+};
 
-      <div className="ticks"></div>
-
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+export default function App() {
+  return (
+    <SecurityProvider>
+      <AppContent />
+      <CommandPalette />
+      <ToastContainer />
+      <AuthModal />
+      <ConnectModal />
+    </SecurityProvider>
+  );
 }
 
-export default App
