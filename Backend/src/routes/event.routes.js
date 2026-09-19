@@ -19,5 +19,10 @@ router.post('/simulate-aws', eventController.simulateAws);
 router.get('/', eventController.list);
 router.get('/:id', eventController.getById);
 
+// Blast radius analysis for security event
+const blastRadiusController = require('../controllers/blastRadius.controller');
+router.post('/:id/blast-radius', blastRadiusController.getEventBlastRadius);
+router.get('/:id/blast-radius', blastRadiusController.getEventBlastRadius);
+
 module.exports = router;
 

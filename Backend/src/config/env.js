@@ -49,6 +49,45 @@ const config = {
   aiMaxGraphSteps: parseInt(process.env.AI_MAX_GRAPH_STEPS, 10) || 20,
   aiMaxInvestigationTimeMs: parseInt(process.env.AI_MAX_INVESTIGATION_TIME_MS, 10) || 60000,
   aiMaxToolResultItems: parseInt(process.env.AI_MAX_TOOL_RESULT_ITEMS, 10) || 100,
+  // Neo4j Identity / Attack Graph settings (Task 11)
+  // Never log neo4jPassword or return it through APIs
+  neo4jUri: process.env.NEO4J_URI || 'bolt://localhost:7687',
+  neo4jUsername: process.env.NEO4J_USERNAME || 'neo4j',
+  neo4jPassword: process.env.NEO4J_PASSWORD || '',
+  neo4jDatabase: process.env.NEO4J_DATABASE || 'neo4j',
+  neo4jMaxConnectionLifetimeMs: parseInt(process.env.NEO4J_MAX_CONNECTION_LIFETIME_MS, 10) || 3600000,
+  neo4jConnectionTimeoutMs: parseInt(process.env.NEO4J_CONNECTION_TIMEOUT_MS, 10) || 5000,
+  // Blast Radius Engine settings (Task 12)
+  blastRadiusMaxDepth: parseInt(process.env.BLAST_RADIUS_MAX_DEPTH, 10) || 5,
+  blastRadiusMaxNodes: parseInt(process.env.BLAST_RADIUS_MAX_NODES, 10) || 500,
+  blastRadiusMaxPaths: parseInt(process.env.BLAST_RADIUS_MAX_PATHS, 10) || 100,
+  blastRadiusTimeoutMs: parseInt(process.env.BLAST_RADIUS_TIMEOUT_MS, 10) || 10000,
+  // Recovery Planner + Action Executor settings (Task 13)
+  recoveryMaxActionsPerPlan: parseInt(process.env.RECOVERY_MAX_ACTIONS_PER_PLAN, 10) || 10,
+  recoveryMaxExecutionTimeMs: parseInt(process.env.RECOVERY_MAX_EXECUTION_TIME_MS, 10) || 30000,
+  recoveryAuthorizationTtlMinutes: parseInt(process.env.RECOVERY_AUTHORIZATION_TTL_MINUTES, 10) || 60,
+  // Policy + Approval Engine settings (Task 14)
+  policyVersion: process.env.POLICY_VERSION || 'v1',
+  approvalExpiryMinutes: parseInt(process.env.APPROVAL_EXPIRY_MINUTES, 10) || 30,
+  // Verification & Persistence Engine settings (Task 15)
+  verificationTimeoutMs: parseInt(process.env.VERIFICATION_TIMEOUT_MS, 10) || 10000,
+  verificationEventWindowMinutes: parseInt(process.env.VERIFICATION_EVENT_WINDOW_MINUTES, 10) || 30,
+  maxVerificationChecks: parseInt(process.env.MAX_VERIFICATION_CHECKS, 10) || 50,
+  maxPostRecoveryEvents: parseInt(process.env.MAX_POST_RECOVERY_EVENTS, 10) || 100,
+  maxPersistenceItems: parseInt(process.env.MAX_PERSISTENCE_ITEMS, 10) || 100,
+  maxRecoveryCyclesPerIncident: parseInt(process.env.MAX_RECOVERY_CYCLES_PER_INCIDENT, 10) || 3,
+  // Notifications + WebSockets settings (Task 16)
+  wsHeartbeatIntervalMs: parseInt(process.env.WS_HEARTBEAT_INTERVAL_MS, 10) || 30000,
+  wsConnectionTimeoutMs: parseInt(process.env.WS_CONNECTION_TIMEOUT_MS, 10) || 10000,
+  wsMaxConnectionsPerUser: parseInt(process.env.WS_MAX_CONNECTIONS_PER_USER, 10) || 5,
+  wsMaxTotalConnections: parseInt(process.env.WS_MAX_TOTAL_CONNECTIONS, 10) || 1000,
+  wsMaxMessagesPerMinute: parseInt(process.env.WS_MAX_MESSAGES_PER_MINUTE, 10) || 120,
+  wsMaxMessageBytes: parseInt(process.env.WS_MAX_MESSAGE_BYTES, 10) || 16384,
+  maxNotificationPayloadBytes: parseInt(process.env.MAX_NOTIFICATION_PAYLOAD_BYTES, 10) || 16384,
+  notificationRetentionDays: parseInt(process.env.NOTIFICATION_RETENTION_DAYS, 10) || 30,
+  maxNotificationPageSize: parseInt(process.env.MAX_NOTIFICATION_PAGE_SIZE, 10) || 100,
 };
 
 module.exports = config;
+
+

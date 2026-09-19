@@ -60,9 +60,10 @@ async function create(entry) {
  * @param {number} [limit=50]
  * @returns {Promise<Array<object>>}
  */
-async function listByUserId(userId, limit = 50) {
+async function listByUserId(userId, options = 50) {
   const db = getDb();
-  return await db.orm.public.AuditLog.where({ userId }).take(limit);
+  const limit = typeof options === 'number' ? options : (options?.limit || 50);
+  return await db.orm.public.AuditLog.where({ userId }).limit(limit).all();
 }
 
 module.exports = {

@@ -154,8 +154,32 @@ async function listByEventId(eventId) {
     .all();
 }
 
+/**
+ * Finds an Evidence record by ID.
+ *
+ * @param {string} id
+ * @returns {Promise<object|null>}
+ */
+async function findById(id) {
+  const db = getDb();
+  return await db.orm.public.Evidence.where({ id }).first();
+}
+
+/**
+ * Returns all Evidence records for an incident.
+ *
+ * @param {string} incidentId
+ * @returns {Promise<object[]>}
+ */
+async function findByIncidentId(incidentId) {
+  const db = getDb();
+  return await db.orm.public.Evidence.where({ incidentId }).all();
+}
+
 module.exports = {
   create,
+  findById,
+  findByIncidentId,
   findByDetectionKey,
   listByIncidentId,
   listByEventId,

@@ -1,19 +1,30 @@
 'use strict';
 
+const { checkNeo4jHealth } = require('../infrastructure/neo4j/neo4j.client');
+
 /**
  * GET /api/health
  *
  * Liveness check — confirms the Express process is running.
- * No DB or external service probes here.
+ * Also reports non-blocking status of Neo4j graph subsystem.
  *
  * @param {import('express').Request} req
  * @param {import('express').Response} res
  */
-const getHealth = (req, res) => {
+const getHealth = async (req, res) => {
+  let neo4jStatus = 'unavailable';
+  try {
+    const neo4jHealth = await checkNeo4jHealth();
+    neo4jStatus = neo4jHealth.healthy ? 'healthy' : 'unavailable';
+  } catch {
+    neo4jStatus = 'unavailable';
+  }
+
   res.status(200).json({
     success: true,
     service: 'Re:COVER Backend',
     status: 'healthy',
+    neo4j: neo4jStatus,
   });
 };
 
@@ -21,18 +32,6 @@ const getHealth = (req, res) => {
  * GET /api/health/db
  *
  * Readiness check — verifies Prisma 8 RC → PostgreSQL connectivity.
- *
- * Prisma 8 RC raw SQL pattern:
- *   const plan = db.raw.sql`SELECT 1`.affectedCount().build();
- *   await db.runtime().execute(plan);
- *
- * Response NEVER exposes:
- *   - DATABASE_URL or any credentials
- *   - Raw Prisma/PostgreSQL error messages
- *   - Internal stack traces
- *
- * @param {import('express').Request} req
- * @param {import('express').Response} res
  */
 const getDbHealth = async (req, res) => {
   try {
@@ -59,4 +58,40 @@ const getDbHealth = async (req, res) => {
   }
 };
 
-module.exports = { getHealth, getDbHealth };
+/**
+ * GET /api/health/neo4j
+ *
+ * Readiness check for Neo4j Identity / Attack Graph subsystem.
+ * Never exposes credentials or connection URIs.
+ */
+const getNeo4jHealth = async (req, res) => {
+  try {
+    const neo4jHealth = await checkNeo4jHealth();
+
+    if (neo4jHealth.healthy) {
+      return res.status(200).json({
+        success: true,
+        neo4j: 'healthy',
+        latencyMs: neo4jHealth.latencyMs,
+      });
+    }
+
+    return res.status(503).json({
+      success: false,
+      neo4j: 'unavailable',
+      error: neo4jHealth.message || 'Connection failed',
+    });
+  } catch (err) {
+    return res.status(503).json({
+      success: false,
+      neo4j: 'unavailable',
+      error: 'Health check failed',
+    });
+  }
+};
+
+module.exports = {
+  getHealth,
+  getDbHealth,
+  getNeo4jHealth,
+};
