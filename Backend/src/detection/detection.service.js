@@ -9,6 +9,7 @@ const detectionContextService = require('./detectionContext.service');
 const eventCorrelationService = require('./eventCorrelation.service');
 const riskEngine = require('./riskEngine');
 const { detectionRuleRegistry } = require('./rules/detectionRule.registry');
+const { notificationService } = require('../services/notification.service');
 
 /**
  * DetectionService — Main orchestrator of the Re:COVER Detection Pipeline.
@@ -215,6 +216,9 @@ class DetectionService {
     // -----------------------------------------------------------------------
     // STEP 5: Get applicable rules from registry
     // -----------------------------------------------------------------------
+    if (detectionRuleRegistry.size === 0) {
+      initDefaultRules();
+    }
     const applicableRules = detectionRuleRegistry.getApplicableRules(event);
 
     // -----------------------------------------------------------------------
@@ -373,6 +377,32 @@ class DetectionService {
 
       // Link the primary SecurityEvent to the incident
       await incidentRepository.linkEventToIncident(eventId, incidentId);
+
+      // Real-time notification dispatch to active WebSocket connections
+      if (targetIncident) {
+        notificationService.notifyIncidentCreated({
+          incident: targetIncident,
+          correlationId,
+        }).catch(() => {});
+
+        notificationService.notifyAccountSecurityAlert({
+          userId,
+          provider: event.provider,
+          eventType: event.eventType,
+          severity: targetIncident.severity,
+          title: `🚨 ${event.provider} ${event.eventType.replace(/_/g, ' ')}`,
+          message: targetIncident.summary || `Security event detected on your ${event.provider} account.`,
+          incidentId,
+          device: event.deviceMetadata?.device || event.deviceMetadata?.userAgent || null,
+          location: event.locationMetadata?.city
+            ? `${event.locationMetadata.city}${event.locationMetadata.country ? `, ${event.locationMetadata.country}` : ''}`
+            : null,
+          timestamp: event.occurredAt || event.createdAt,
+          source: `${event.provider} Security API`,
+          providerEventId: event.providerEventId,
+          correlationId,
+        }).catch(() => {});
+      }
     }
 
     // -----------------------------------------------------------------------

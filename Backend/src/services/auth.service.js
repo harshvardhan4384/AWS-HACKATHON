@@ -431,12 +431,30 @@ async function login({ email, password, ipAddress, userAgent }) {
     throw error;
   }
 
-  // 3. Check email verification
+  // 3. Check email verification: automatically dispatch a fresh verification OTP to Mailpit/SMTP
   if (!user.emailVerifiedAt) {
+    const { rawOtp } = await otpService.createChallenge({
+      userId: user.id,
+      email: normalizedEmail,
+      purpose: 'EMAIL_VERIFICATION',
+    });
+
+    console.log(`[AUTH] Dispatching verification OTP for unverified account on login: ${normalizedEmail}`);
+    await emailService.sendEmailVerificationOtp({
+      to: normalizedEmail,
+      otp: rawOtp,
+      displayName: user.displayName,
+    });
+
+    await audit('EMAIL_VERIFICATION_REQUESTED', {
+      userId: user.id,
+      metadata: { email: normalizedEmail, ipAddress, triggeredBy: 'LOGIN_ATTEMPT' },
+    });
+
     return {
       requiresEmailVerification: true,
       email: normalizedEmail,
-      message: 'Please verify your email address before logging in.',
+      message: 'Please verify your email address before logging in. A 6-digit code has been sent to your email.',
     };
   }
 

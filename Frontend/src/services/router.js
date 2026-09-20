@@ -50,7 +50,7 @@ export function parseLocation(loc = (typeof window !== 'undefined' ? window.loca
     tab = TAB_ROUTES.LANDING;
   } else if (cleanPath === '/dashboard') {
     tab = TAB_ROUTES.DASHBOARD;
-  } else if (cleanPath === '/accounts' || cleanPath === '/fabrics') {
+  } else if (cleanPath === '/accounts' || cleanPath === '/fabrics' || cleanPath === '/connected-accounts') {
     tab = TAB_ROUTES.ACCOUNTS;
   } else if (cleanPath === '/telemetry' || cleanPath === '/events') {
     tab = TAB_ROUTES.TELEMETRY;

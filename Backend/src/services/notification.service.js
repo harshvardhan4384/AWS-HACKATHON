@@ -352,6 +352,79 @@ class NotificationService {
   }
 
   /**
+   * Dispatches a real-time account security alert across WebSockets and Notification Center.
+   * Enforces deterministic deduplication using providerEventId, incidentId, and eventType.
+   */
+  async notifyAccountSecurityAlert({
+    userId,
+    provider,
+    eventType,
+    severity = NOTIFICATION_SEVERITIES.HIGH,
+    title,
+    message,
+    incidentId = null,
+    device = null,
+    location = null,
+    timestamp = null,
+    source = null,
+    providerEventId = null,
+    correlationId = null,
+    metadata = null,
+  }) {
+    if (!userId) return null;
+
+    // Deterministic dedup key
+    const dedupKey = `security-alert:${userId}:${provider}:${providerEventId || ''}:${incidentId || ''}:${eventType}`;
+
+    const enrichedMetadata = {
+      provider,
+      eventType,
+      device: device || null,
+      location: location || null,
+      timestamp: timestamp || new Date().toISOString(),
+      source: source || `${provider} Security API`,
+      providerEventId: providerEventId || null,
+      ...(metadata || {}),
+    };
+
+    const notification = await this.createNotification({
+      userId,
+      type: NOTIFICATION_TYPES.SECURITY_ALERT,
+      severity,
+      title: title || `🚨 Security Alert: ${provider} ${eventType.replace(/_/g, ' ')}`,
+      message: message || `A critical security event was detected on your connected ${provider} account.`,
+      incidentId,
+      correlationId,
+      metadata: enrichedMetadata,
+      deduplicationKey: dedupKey,
+    });
+
+    // Also dispatch direct WS_OUTBOUND_TYPES.SECURITY_ALERT frame for immediate client banner trigger
+    if (!notification.isDuplicate) {
+      const alertEnvelope = {
+        type: WS_OUTBOUND_TYPES.SECURITY_ALERT,
+        alert: {
+          id: notification.id,
+          provider,
+          eventType,
+          severity,
+          title: notification.title,
+          message: notification.message,
+          incidentId,
+          device,
+          location,
+          timestamp: timestamp || new Date().toISOString(),
+          source: source || `${provider} Security API`,
+          metadata: enrichedMetadata,
+        },
+      };
+      connectionManager.sendToUser(userId, alertEnvelope);
+    }
+
+    return notification;
+  }
+
+  /**
    * Serializes a notification to a clean, safe DTO.
    * @private
    */

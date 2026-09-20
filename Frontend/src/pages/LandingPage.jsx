@@ -145,10 +145,14 @@ export const LandingPage = () => {
             {/* WebGL Immune Core Visualization */}
             <div className="w-full max-w-5xl relative rounded-2xl bg-surface-container-lowest p-2 border border-white/10 shadow-2xl">
               <div className="relative w-full h-[360px] sm:h-[460px] md:h-[500px] rounded-xl overflow-hidden bg-surface-container-low">
-                <ImmuneCoreShader className="w-full h-full relative" />
+                <ImmuneCoreShader
+                  className="w-full h-full relative"
+                  simState={simState}
+                  onSimulateClick={handleRunDemo}
+                />
                 
-                {/* Floating Telemetry Stats Over Shader */}
-                <div className="absolute top-4 left-4 p-3 rounded-xl bg-surface-container/80 backdrop-blur-md border border-white/10 shadow-lg text-left hidden sm:block">
+                {/* Floating Telemetry Stats Over Visualization */}
+                <div className="absolute top-4 left-4 p-3 rounded-xl bg-surface-container/80 backdrop-blur-md border border-white/10 shadow-lg text-left hidden sm:block pointer-events-none z-30">
                   <div className="flex items-center gap-2 text-[10px] font-mono text-outline uppercase">
                     <Activity className="w-3 h-3 text-primary animate-pulse" />
                     <span>Active Telemetry Stream</span>
@@ -156,21 +160,25 @@ export const LandingPage = () => {
                   <p className="text-sm font-mono font-bold text-on-surface mt-0.5">Continuous Ingestion</p>
                 </div>
 
-                <div className="absolute top-4 right-4 p-3 rounded-xl bg-surface-container/80 backdrop-blur-md border border-white/10 shadow-lg text-right hidden sm:block">
+                <div className="absolute top-4 right-4 p-3 rounded-xl bg-surface-container/80 backdrop-blur-md border border-white/10 shadow-lg text-right hidden sm:block pointer-events-none z-30">
                   <div className="flex items-center justify-end gap-2 text-[10px] font-mono text-outline uppercase">
                     <span>Autonomous Defense</span>
-                    <Zap className="w-3 h-3 text-secondary" />
+                    <Zap className={`w-3 h-3 ${simState === 'simulating' ? 'text-error animate-ping' : 'text-secondary'}`} />
                   </div>
-                  <p className="text-sm font-mono font-bold text-secondary mt-0.5">Topological Isolation</p>
+                  <p className={`text-sm font-mono font-bold mt-0.5 ${simState === 'simulating' ? 'text-error' : 'text-secondary'}`}>
+                    {simState === 'simulating' ? 'Quarantining Threat' : simState === 'mitigated' ? 'Topology Restored' : 'Topological Isolation'}
+                  </p>
                 </div>
 
-                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 px-4 py-2 rounded-xl bg-surface-container/90 backdrop-blur-md border border-white/10 shadow-lg flex items-center gap-4 text-xs font-mono text-on-surface">
-                  <span className="flex items-center gap-1.5 text-primary">
-                    <span className="w-2 h-2 rounded-full bg-primary animate-ping"></span>
-                    Graph Topology Active
+                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 px-4 py-2 rounded-xl bg-surface-container/90 backdrop-blur-md border border-white/10 shadow-lg flex items-center gap-4 text-xs font-mono text-on-surface pointer-events-none z-30 whitespace-nowrap">
+                  <span className={`flex items-center gap-1.5 ${simState === 'simulating' ? 'text-error' : simState === 'mitigated' ? 'text-secondary' : 'text-primary'}`}>
+                    <span className={`w-2 h-2 rounded-full ${simState === 'simulating' ? 'bg-error animate-ping' : simState === 'mitigated' ? 'bg-secondary' : 'bg-primary animate-ping'}`}></span>
+                    {simState === 'simulating' ? 'Threat Detected • Isolating Node' : simState === 'mitigated' ? 'Identity Graph • Verified' : 'Identity Graph • Monitoring'}
                   </span>
-                  <span className="text-outline">|</span>
-                  <span className="text-on-surface-variant">Hover cursor to interact with immune field</span>
+                  <span className="text-outline hidden sm:inline">|</span>
+                  <span className="text-on-surface-variant hidden sm:inline">
+                    {simState === 'simulating' ? 'Automated credential isolation in progress' : simState === 'mitigated' ? 'All connections secured' : 'Click any node to test autonomous containment'}
+                  </span>
                 </div>
               </div>
             </div>

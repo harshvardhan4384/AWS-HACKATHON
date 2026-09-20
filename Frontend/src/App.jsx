@@ -5,6 +5,7 @@ import { Header } from './components/common/Header';
 import { Sidebar } from './components/common/Sidebar';
 import { CommandPalette } from './components/common/CommandPalette';
 import { ToastContainer } from './components/common/ToastContainer';
+import { SecurityAlertBanner } from './components/common/SecurityAlertBanner';
 import { AuthModal } from './components/common/AuthModal';
 import { ConnectModal } from './components/common/ConnectModal';
 
@@ -87,6 +88,7 @@ export default function App() {
         <AppContent />
         <CommandPalette />
         <ToastContainer />
+        <SecurityAlertBanner />
         <AuthModal />
         <ConnectModal />
       </NotificationProvider>

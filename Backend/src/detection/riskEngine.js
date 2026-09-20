@@ -34,6 +34,7 @@
 /** @type {Object.<string, number>} Score contribution per finding type */
 const SCORE_CONTRIBUTIONS = {
   UNFAMILIAR_LOGIN: 25,
+  SUSPICIOUS_LOGIN: 40,
   NEW_SSH_KEY: 30,
   NEW_CREDENTIAL_CREATED: 30,
   NEW_OAUTH_GRANT: 20,

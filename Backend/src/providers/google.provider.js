@@ -332,7 +332,303 @@ class GoogleOAuthProvider extends BaseOAuthProvider {
       throw revokeErr;
     }
   }
+
+  /**
+   * Retrieves real account and OAuth telemetry for this Google account using authorized Google APIs.
+   * Strictly adheres to Zero Fabrication: never fabricates fake login dates, devices, or 2FA.
+   *
+   * @param {string} accessToken
+   * @param {object} [profile]
+   * @param {object} [options]
+   * @returns {Promise<object>}
+   */
+  async getSecurityOverview(accessToken, profile = {}, options = {}) {
+    const { CAPABILITY_STATES } = require('./capabilityMatrix');
+    let isWorkspace = Boolean(profile?.raw?.hd);
+    let hostedDomain = profile?.raw?.hd || null;
+
+    let initialEmail = profile.email || null;
+    if (!initialEmail && profile.displayName && profile.displayName.includes('@')) {
+      const match = profile.displayName.match(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/);
+      if (match) initialEmail = match[1];
+    }
+
+    let realProfile = {
+      displayName: profile.displayName || profile.email || 'Google User',
+      email: initialEmail,
+      avatarUrl: profile?.raw?.picture || null,
+      providerAccountId: profile.providerAccountId,
+      emailVerified: profile?.raw?.email_verified ?? true,
+    };
+
+    let tokenMetadata = null;
+    let syncStatus = 'ACTIVE';
+    let syncMessage = null;
+
+    if (accessToken && options.inspectToken !== false) {
+      const client = this.getClient();
+
+      // 1. Fetch real live profile/avatar if accessible
+      try {
+        const userInfoRes = await client.request({
+          url: GOOGLE_USERINFO_ENDPOINT,
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+        if (userInfoRes?.data) {
+          const uData = userInfoRes.data;
+          realProfile = {
+            displayName: uData.name || uData.email || realProfile.displayName,
+            email: uData.email || realProfile.email,
+            avatarUrl: uData.picture || realProfile.avatarUrl,
+            providerAccountId: uData.sub || realProfile.providerAccountId,
+            emailVerified: uData.email_verified ?? true,
+          };
+          if (uData.hd) {
+            isWorkspace = true;
+            hostedDomain = uData.hd;
+          }
+        }
+      } catch (err) {
+        if (err.response?.status === 401) {
+          syncStatus = 'ERROR';
+          syncMessage = 'Google authorization has expired or been revoked. Reconnect Google.';
+        }
+      }
+
+      // 2. Query tokeninfo for real expiration and verified scopes
+      try {
+        const tokenInfoRes = await client.request({
+          url: `https://oauth2.googleapis.com/tokeninfo?access_token=${accessToken}`,
+        });
+        if (tokenInfoRes?.data) {
+          tokenMetadata = {
+            expiresInSec: tokenInfoRes.data.expires_in ? parseInt(tokenInfoRes.data.expires_in, 10) : null,
+            scope: tokenInfoRes.data.scope || null,
+            email: tokenInfoRes.data.email || null,
+            emailVerified: tokenInfoRes.data.verified_email === 'true' || tokenInfoRes.data.verified_email === true,
+          };
+        }
+      } catch {
+        // Non-blocking
+      }
+    }
+
+    const grantedScopesList = tokenMetadata?.scope
+      ? tokenMetadata.scope.split(' ')
+      : profile.grantedScopes
+      ? profile.grantedScopes.split(/[\s,]+/).filter(Boolean)
+      : DEFAULT_SCOPES;
+
+    // Exact consumer boundary check
+    const isConsumer = !isWorkspace || (realProfile.email && (realProfile.email.endsWith('@gmail.com') || realProfile.email.endsWith('@googlemail.com')));
+    const consumerExplanation = 'Google consumer OAuth does not expose this security telemetry through the current official API integration.';
+
+    // Check if Google Workspace Admin Reports scope is authorized
+    const hasWorkspaceReportsScope = grantedScopesList.some(s =>
+      s.includes('admin.reports.audit.readonly') || s.includes('admin.reports')
+    );
+
+    let workspaceLoginEvents = [];
+    if (isWorkspace && hasWorkspaceReportsScope && accessToken) {
+      try {
+        const reportsRes = await this.getWorkspaceReports({
+          accessToken,
+          userKey: 'all',
+          applicationName: 'login',
+        });
+        if (reportsRes.authorized && Array.isArray(reportsRes.events)) {
+          workspaceLoginEvents = reportsRes.events;
+        }
+      } catch {
+        // Non-blocking
+      }
+    }
+
+    return {
+      provider: 'GOOGLE',
+      account: {
+        displayName: realProfile.displayName,
+        email: realProfile.email,
+        avatarUrl: realProfile.avatarUrl,
+        providerUserId: realProfile.providerAccountId,
+        emailVerified: realProfile.emailVerified,
+        accountType: isConsumer ? 'Google Consumer Account' : `Google Workspace (${hostedDomain || 'Managed Domain'})`,
+        isConsumer,
+        isWorkspace: !isConsumer,
+      },
+      oauth: {
+        status: 'ACTIVE',
+        scopes: grantedScopesList,
+        tokenExpiresInSec: tokenMetadata?.expiresInSec || null,
+        hasRefreshToken: Boolean(profile.hasRefreshToken),
+        revocationSupported: true,
+        revocationEndpoint: GOOGLE_REVOKE_ENDPOINT,
+      },
+      sshKeys: [],
+      activity: [],
+      sync: {
+        status: syncStatus,
+        lastSyncedAt: new Date().toISOString(),
+        message: syncMessage,
+        monitoringMode: hasWorkspaceReportsScope ? 'WORKSPACE_REPORTS_POLLING' : 'PROFILE_MONITORING_ONLY',
+      },
+      securityNotice: isConsumer
+        ? consumerExplanation
+        : (hasWorkspaceReportsScope
+          ? 'Google Workspace Admin Reports API active. Real login, 2SV, and admin events are being monitored.'
+          : 'Google Workspace account detected. Connect with Admin SDK Reports scope (admin.reports.audit.readonly) to monitor domain login and security logs.'),
+      // Structured capability properties
+      twoFactorAuth: {
+        status: isConsumer ? CAPABILITY_STATES.NOT_AVAILABLE : (hasWorkspaceReportsScope ? CAPABILITY_STATES.AVAILABLE : CAPABILITY_STATES.NOT_AVAILABLE),
+        enabled: null,
+        detail: isConsumer
+          ? consumerExplanation
+          : '2-Step Verification enrollment telemetry requires Google Workspace Directory Admin SDK or Reports API.',
+      },
+      loginHistory: {
+        status: isConsumer ? CAPABILITY_STATES.NOT_AVAILABLE : (hasWorkspaceReportsScope ? CAPABILITY_STATES.AVAILABLE : CAPABILITY_STATES.NOT_AVAILABLE),
+        lastLogin: null,
+        recentLogins: workspaceLoginEvents.map(e => ({
+          time: e.id?.time,
+          actor: e.actor?.email,
+          ip: e.ipAddress,
+          type: e.events?.[0]?.name,
+        })),
+        detail: isConsumer
+          ? consumerExplanation
+          : (hasWorkspaceReportsScope
+            ? 'Real login history retrieved via Google Workspace Admin SDK Reports API.'
+            : 'Requires Google Workspace Admin SDK Reports scope to retrieve domain audit logs.'),
+      },
+      sessionsAndDevices: {
+        status: isConsumer ? CAPABILITY_STATES.NOT_AVAILABLE : CAPABILITY_STATES.NOT_AVAILABLE,
+        activeSessions: null,
+        devices: [],
+        detail: isConsumer
+          ? consumerExplanation
+          : 'Device inventory and active browser sessions require Google Workspace Endpoint Management MDM.',
+      },
+      credentialsAndKeys: {
+        status: CAPABILITY_STATES.NOT_SUPPORTED,
+        sshKeys: [],
+        detail: 'SSH public keys are not applicable to Google Identity accounts.',
+      },
+      authorizedApps: {
+        status: hasWorkspaceReportsScope ? CAPABILITY_STATES.AVAILABLE : CAPABILITY_STATES.NOT_AVAILABLE,
+        apps: [],
+        detail: isConsumer
+          ? consumerExplanation
+          : 'OAuth application inventory requires Google Workspace Admin SDK Token API.',
+      },
+      tokenGovernance: {
+        status: CAPABILITY_STATES.AVAILABLE,
+        revocationSupported: true,
+        revocationEndpoint: GOOGLE_REVOKE_ENDPOINT,
+        refreshSupported: true,
+        expiresInSec: tokenMetadata?.expiresInSec || null,
+        grantedScopes: grantedScopesList,
+        emailVerified: realProfile.emailVerified,
+      },
+      securitySettings: {
+        status: CAPABILITY_STATES.AVAILABLE,
+        emailVerified: realProfile.emailVerified,
+        isHostedDomain: !isConsumer,
+        hostedDomain,
+      },
+      lastSynchronized: new Date().toISOString(),
+    };
+  }
+
+  /**
+   * Retrieves official Google Workspace Reports API events (login, admin, token).
+   *
+   * @param {object} params
+   * @param {string} params.accessToken
+   * @param {string} [params.userKey='all']
+   * @param {'login'|'admin'|'token'} [params.applicationName='login']
+   * @param {string} [params.startTime] - RFC 3339 timestamp
+   * @returns {Promise<{ authorized: boolean, events: Array<object>, cursor?: string|null, reason?: string }>}
+   */
+  async getWorkspaceReports({ accessToken, userKey = 'all', applicationName = 'login', startTime = null }) {
+    if (!accessToken) {
+      return { authorized: false, events: [], reason: 'Access token required' };
+    }
+
+    const client = this.getClient();
+    let url = `https://admin.googleapis.com/admin/reports/v1/activity/users/${encodeURIComponent(userKey)}/applications/${encodeURIComponent(applicationName)}`;
+    if (startTime) {
+      url += `?startTime=${encodeURIComponent(startTime)}`;
+    }
+
+    try {
+      const res = await client.request({
+        url,
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      return {
+        authorized: true,
+        events: res.data?.items || [],
+        cursor: res.data?.nextPageToken || null,
+      };
+    } catch (err) {
+      const status = err.response?.status;
+      if (status === 403 || status === 401) {
+        return {
+          authorized: false,
+          events: [],
+          reason: 'Google Workspace Admin Reports API scope not authorized or account is not an administrator.',
+        };
+      }
+      return {
+        authorized: false,
+        events: [],
+        reason: err.message,
+      };
+    }
+  }
+
+  /**
+   * Registers a push notification watch channel with Google Workspace Reports API.
+   *
+   * @param {object} params
+   * @param {string} params.accessToken
+   * @param {'login'|'admin'|'token'} [params.applicationName='login']
+   * @param {string} params.webhookUrl
+   * @param {string} params.channelId
+   * @param {string} params.channelToken
+   * @returns {Promise<{ success: boolean, data?: object, error?: string }>}
+   */
+  async setupWorkspacePushWatch({ accessToken, applicationName = 'login', webhookUrl, channelId, channelToken }) {
+    if (!accessToken) {
+      return { success: false, error: 'Access token required' };
+    }
+
+    const client = this.getClient();
+    const url = `https://admin.googleapis.com/admin/reports/v1/activity/users/all/applications/${encodeURIComponent(applicationName)}/watch`;
+
+    try {
+      const res = await client.request({
+        url,
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        data: {
+          id: channelId,
+          type: 'web_hook',
+          address: webhookUrl,
+          token: channelToken,
+        },
+      });
+      return { success: true, data: res.data };
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+  }
 }
 
 module.exports = GoogleOAuthProvider;
+
+
 

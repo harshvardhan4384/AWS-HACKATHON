@@ -21,7 +21,7 @@ class UnfamiliarLoginRule extends BaseDetectionRule {
       name: 'Login from Unfamiliar IP',
       description: `Triggers when a LOGIN event originates from an IP not seen in the last ${config.detectionUnfamiliarLoginLookbackDays} days for this account.`,
       providers: [],
-      eventTypes: ['LOGIN'],
+      eventTypes: ['LOGIN', 'SUSPICIOUS_LOGIN'],
       severity: 'MEDIUM',
       enabled: true,
     });
@@ -29,6 +29,28 @@ class UnfamiliarLoginRule extends BaseDetectionRule {
 
   async evaluate(context) {
     const { event, knownIps } = context;
+
+    // Direct provider-flagged suspicious login
+    if (event.eventType === 'SUSPICIOUS_LOGIN') {
+      const locStr = event.locationMetadata?.city
+        ? `${event.locationMetadata.city}${event.locationMetadata.country ? `, ${event.locationMetadata.country}` : ''}`
+        : (event.locationMetadata?.rawLocation || null);
+
+      return {
+        ruleId: this.id,
+        type: 'SUSPICIOUS_LOGIN',
+        severity: 'HIGH',
+        confidence: 0.85,
+        summary: `Suspicious login detected by ${event.provider || 'provider'}${event.sourceIp ? ` from IP ${event.sourceIp}` : ''}${locStr ? ` in ${locStr}` : ''}.`,
+        relatedEventIds: [],
+        metadata: {
+          observedIp: event.sourceIp,
+          provider: event.provider,
+          device: event.deviceMetadata,
+          location: event.locationMetadata,
+        },
+      };
+    }
 
     // Cannot determine unfamiliarity without source IP
     if (!event.sourceIp) return null;

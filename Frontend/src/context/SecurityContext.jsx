@@ -1440,19 +1440,59 @@ export const SecurityProvider = ({ children }) => {
 
       return new Promise((resolve) => {
         let pollCount = 0;
+        let isResolved = false;
         const maxPolls = 600; // 5 minutes max
-        const interval = setInterval(async () => {
+
+        const finish = async (resultStatus, errorReason) => {
+          if (isResolved) return;
+          isResolved = true;
+          clearInterval(interval);
+          window.removeEventListener('message', handleMessage);
+
+          if (popup && !popup.closed) {
+            try { popup.close(); } catch {}
+          }
+
+          if (resultStatus === 'error') {
+            const providerTitle = providerKey === 'GOOGLE' ? 'Google' : providerKey === 'GITHUB' ? 'GitHub' : 'Provider';
+            let msg = `Unable to connect ${providerTitle}. Please try again.`;
+            if (errorReason === 'account_already_linked') {
+              msg = `This ${providerTitle} account is already connected to another Re:COVER user.`;
+            } else if (errorReason === 'authorization_denied') {
+              msg = `${providerTitle} authorization was cancelled or denied.`;
+            } else if (errorReason === 'state_invalid') {
+              msg = 'OAuth security validation failed (invalid or expired session). Please try again.';
+            } else if (errorReason === 'provider_error' || errorReason === 'google_auth_failed') {
+              msg = `Failed to communicate with ${providerTitle} authentication services. Please try again.`;
+            }
+            addToast('error', 'OAuth Connection Failed', msg);
+            resolve({ completed: false, error: msg });
+            return;
+          }
+
+          // Wait briefly for server database transaction to commit
+          await new Promise(r => setTimeout(r, 400));
+          const updatedAccounts = await fetchConnectedAccounts();
+          const newlyAdded = updatedAccounts.find(a => (a.provider || '').toUpperCase() === providerKey);
+          if (newlyAdded) {
+            addToast('success', 'Provider Connected', `Successfully enrolled "${newlyAdded.name}" into Digital Immune Fabric.`);
+          }
+          resolve({ completed: true, accounts: updatedAccounts });
+        };
+
+        const handleMessage = (event) => {
+          if (event.origin !== window.location.origin) return;
+          if (event.data && event.data.type === 'OAUTH_RESULT') {
+            finish(event.data.status, event.data.reason);
+          }
+        };
+
+        window.addEventListener('message', handleMessage);
+
+        const interval = setInterval(() => {
           pollCount++;
           if (popup.closed || pollCount >= maxPolls) {
-            clearInterval(interval);
-            // Wait briefly for server to finalize callback handling
-            await new Promise(r => setTimeout(r, 600));
-            const updatedAccounts = await fetchConnectedAccounts();
-            const newlyAdded = updatedAccounts.find(a => (a.provider || '').toUpperCase() === providerKey);
-            if (newlyAdded) {
-              addToast('success', 'Provider Connected', `Successfully enrolled "${newlyAdded.name}" into Digital Immune Fabric.`);
-            }
-            resolve({ completed: true, accounts: updatedAccounts });
+            finish('success', null);
           }
         }, 500);
       });
@@ -1479,15 +1519,21 @@ export const SecurityProvider = ({ children }) => {
   const disconnectAccount = async (id) => {
     try {
       const res = await api.delete(`/api/oauth/connected/${id}`);
-      addToast('info', 'Account Disconnected', (res && res.message) || 'Provider removed from telemetry monitoring.');
+      const successMsg = (res && res.message) || 'Account disconnected successfully.';
+      addToast('info', 'Account Disconnected', successMsg);
       await fetchConnectedAccounts();
+      return res;
     } catch (err) {
       // If error (e.g. simulated local account not in DB), fallback to filtering locally if not found
       if (err.status === 404 || String(id).startsWith('acc-')) {
         setConnectedAccounts(prev => prev.filter(a => a.id !== id));
         addToast('info', 'Account Disconnected', 'Connector removed from telemetry monitoring.');
+        return { success: true };
       } else {
-        addToast('error', 'Disconnect Failed', err.message || 'Failed to disconnect provider account');
+        const errorMsg = err.status === 403
+          ? 'Access denied. You do not have permission to disconnect this account.'
+          : (err.message || 'Unable to disconnect provider. Please try again.');
+        addToast('error', 'Disconnect Failed', errorMsg);
         throw err;
       }
     }
@@ -1506,6 +1552,28 @@ export const SecurityProvider = ({ children }) => {
       }, 1200);
     }
   };
+
+  const fetchAccountSecurityOverview = async (accountId, refresh = false) => {
+    try {
+      const res = await api.get(`/api/oauth/connected/${accountId}/security-overview`, {
+        params: refresh ? { refresh: 'true' } : {},
+      });
+      return res?.data || null;
+    } catch (err) {
+      addToast('error', 'Security Overview Failed', err.message || 'Unable to fetch account security overview.');
+      throw err;
+    }
+  };
+
+  const fetchAggregatedSecurityOverview = async () => {
+    try {
+      const res = await api.get('/api/oauth/security-overview');
+      return res?.data || null;
+    } catch {
+      return null;
+    }
+  };
+
 
   const triggerScenario = (scenarioId) => {
     if (scenarioId === 'pat-leak') {
@@ -2020,7 +2088,9 @@ export const SecurityProvider = ({ children }) => {
         setup2fa,
         enable2fa,
         disable2fa,
-        regenerateRecoveryCodes
+        regenerateRecoveryCodes,
+        fetchAccountSecurityOverview,
+        fetchAggregatedSecurityOverview
       }}
     >
       {children}

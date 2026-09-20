@@ -6,7 +6,10 @@ const tokenEncryptionService = require('./tokenEncryption.service');
 const oauthStateRepository = require('../repositories/oauthState.repository');
 const connectedAccountRepository = require('../repositories/connectedAccount.repository');
 const auditLogRepository = require('../repositories/auditLog.repository');
+const securityEventRepository = require('../repositories/securityEvent.repository');
 const { providerRegistry } = require('../providers/provider.registry');
+const { CAPABILITY_STATES, PROVIDER_CAPABILITIES } = require('../providers/capabilityMatrix');
+const { accountSecurityMonitor } = require('./accountSecurityMonitor.service');
 
 const ALLOWED_PROVIDERS = ['GOOGLE', 'GITHUB', 'AWS'];
 
@@ -296,6 +299,9 @@ async function handleCallback({ userId, providerName, code, state, redirectUri }
     },
   }).catch(() => {});
 
+  // Trigger initial synchronization (initialSync: true ensures historical events populate store without noisy alerts)
+  accountSecurityMonitor.syncAccount(userId, connectedAccount.id, { initialSync: true }).catch(() => {});
+
   // Return strictly sanitized result (NEVER include ciphertexts or tokens)
   return {
     id: connectedAccount.id,
@@ -340,25 +346,38 @@ async function logCallbackFailure(userId, providerName, err) {
  */
 async function disconnectAccount({ userId, connectedAccountId }) {
   if (!connectedAccountId) {
-    const err = new Error('Connected account ID is required');
+    const err = new Error('Connected account ID or provider is required');
     err.statusCode = 400;
     throw err;
   }
 
-  const account = await connectedAccountRepository.findById(connectedAccountId);
+  // 1. Find account by primary key ID or by provider name for the current user
+  let account = await connectedAccountRepository.findById(connectedAccountId);
+
+  if (!account && typeof connectedAccountId === 'string') {
+    const normalized = connectedAccountId.toUpperCase();
+    if (ALLOWED_PROVIDERS.includes(normalized)) {
+      const userAccounts = await connectedAccountRepository.findByUserAndProvider(userId, normalized);
+      if (userAccounts && userAccounts.length > 0) {
+        account = userAccounts[0];
+      }
+    }
+  }
+
   if (!account) {
     const err = new Error('Connected account not found');
     err.statusCode = 404;
     throw err;
   }
 
+  // 2. Strict tenant isolation: user can only disconnect their own connected accounts
   if (account.userId !== userId) {
     const err = new Error('You do not have permission to disconnect this account');
     err.statusCode = 403;
     throw err;
   }
 
-  // Attempt remote token revocation if provider is registered and configured
+  // 3. Attempt remote token revocation if provider adapter supports it
   let remoteRevocationResult = 'SKIPPED';
   const provider = providerRegistry.get(account.provider);
   if (provider && provider.isConfigured() && account.accessTokenCiphertext) {
@@ -372,17 +391,17 @@ async function disconnectAccount({ userId, connectedAccountId }) {
     }
   }
 
-  // Delete local connection
-  await connectedAccountRepository.deleteById(connectedAccountId);
+  // 4. Delete local connection from PostgreSQL
+  await connectedAccountRepository.deleteById(account.id);
 
-  // Audit log: Disconnect
+  // 5. Audit log: record disconnection without leaking any secrets
   await auditLogRepository.create({
     userId,
     actorType: 'USER',
     actorId: userId,
     actionType: 'OAUTH_ACCOUNT_DISCONNECTED',
     targetType: 'connected_account',
-    targetId: connectedAccountId,
+    targetId: account.id,
     result: 'SUCCESS',
     metadata: {
       provider: account.provider,
@@ -391,9 +410,12 @@ async function disconnectAccount({ userId, connectedAccountId }) {
     },
   }).catch(() => {});
 
+  const providerTitle = account.provider.charAt(0) + account.provider.slice(1).toLowerCase();
+
   return {
     success: true,
-    message: `Connected account '${account.provider}' disconnected successfully`,
+    message: `${providerTitle} account disconnected successfully`,
+    provider: account.provider,
     remoteRevocationResult,
   };
 }
@@ -408,6 +430,278 @@ async function listConnectedAccounts(userId) {
   return await connectedAccountRepository.listByUserId(userId);
 }
 
+/**
+ * Retrieves the comprehensive, honest Account Security Overview for a connected provider account.
+ * Adheres strictly to Zero Fabrication: missing or unsupported provider capabilities
+ * are explicitly marked as NOT_SUPPORTED or NOT_AVAILABLE with descriptive notices.
+ *
+ * @param {object} params
+ * @param {string} params.userId - Authenticated user ID
+ * @param {string} params.connectedAccountId - Primary key UUID or provider name (e.g. 'GOOGLE')
+ * @param {boolean} [params.refresh=false] - Force live fetch from provider
+ * @returns {Promise<object>} Structured Security Overview
+ */
+async function getAccountSecurityOverview({ userId, connectedAccountId, refresh = false }) {
+  if (!connectedAccountId) {
+    const err = new Error('Connected account ID or provider is required');
+    err.statusCode = 400;
+    throw err;
+  }
+
+  // 1. Resolve connected account
+  let account = await connectedAccountRepository.findById(connectedAccountId);
+
+  if (!account && typeof connectedAccountId === 'string') {
+    const normalized = connectedAccountId.toUpperCase();
+    if (ALLOWED_PROVIDERS.includes(normalized)) {
+      const userAccounts = await connectedAccountRepository.findByUserAndProvider(userId, normalized);
+      if (userAccounts && userAccounts.length > 0) {
+        account = userAccounts[0];
+      }
+    }
+  }
+
+  if (!account) {
+    const err = new Error('Connected account not found');
+    err.statusCode = 404;
+    throw err;
+  }
+
+  // 2. Strict tenant isolation: user can only view their own security overview
+  if (account.userId !== userId) {
+    const err = new Error('You do not have permission to access security overview for this account');
+    err.statusCode = 403;
+    throw err;
+  }
+
+  // 3. Safely decrypt access token in-memory only (NEVER expose in response or logs)
+  let accessToken = null;
+  if (account.accessTokenCiphertext) {
+    try {
+      accessToken = tokenEncryptionService.decrypt(account.accessTokenCiphertext);
+    } catch {
+      // Decryption failure handled gracefully downstream
+    }
+  }
+
+  let fallbackEmail = null;
+  if (account.providerDisplayName && account.providerDisplayName.includes('@')) {
+    const match = account.providerDisplayName.match(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/);
+    if (match) fallbackEmail = match[1];
+  }
+
+  // 4. Query provider adapter for live/honest security capabilities
+  const provider = providerRegistry.get(account.provider);
+  let providerOverview = null;
+
+  if (provider && provider.isConfigured() && typeof provider.getSecurityOverview === 'function') {
+    try {
+      providerOverview = await provider.getSecurityOverview(
+        accessToken,
+        {
+          providerAccountId: account.providerAccountId,
+          displayName: account.providerDisplayName,
+          email: fallbackEmail,
+          grantedScopes: account.grantedScopes,
+        },
+        { fetchLive: Boolean(refresh) }
+      );
+    } catch (err) {
+      providerOverview = {
+        provider: account.provider,
+        status: CAPABILITY_STATES.ERROR,
+        error: err.message,
+      };
+    }
+  }
+
+  // 5. Query normalized Re:COVER security events associated with this connected account
+  const eventsResult = await securityEventRepository.listByUserId(userId, {
+    connectedAccountId: account.id,
+    limit: 10,
+  }).catch(() => ({ events: [], pagination: { total: 0 } }));
+
+  // 6. Asynchronously update lastSyncAt timestamp
+  const nowIso = new Date().toISOString();
+  connectedAccountRepository.updateLastSyncAt(account.id, nowIso).catch(() => {});
+
+  const staticCapabilities = PROVIDER_CAPABILITIES[account.provider]?.securityOverview || {};
+
+  // 7. Assemble canonical normalized response with real provider data (Phase 10)
+  const normalizedAccount = {
+    id: account.id,
+    userId: account.userId,
+    provider: account.provider,
+    providerAccountId: account.providerAccountId,
+    providerUserId: providerOverview?.account?.providerUserId || account.providerAccountId,
+    providerDisplayName: providerOverview?.account?.displayName || account.providerDisplayName,
+    username: providerOverview?.account?.username || null,
+    displayName: providerOverview?.account?.displayName || account.providerDisplayName,
+    email: providerOverview?.account?.email || fallbackEmail || null,
+    avatarUrl: providerOverview?.account?.avatarUrl || null,
+    profileUrl: providerOverview?.account?.profileUrl || null,
+    accountType: providerOverview?.account?.accountType || (account.provider === 'GOOGLE' ? 'Google Account' : 'GitHub Account'),
+    plan: providerOverview?.account?.plan || null,
+    bio: providerOverview?.account?.bio || null,
+    company: providerOverview?.account?.company || null,
+    location: providerOverview?.account?.location || null,
+    publicRepos: providerOverview?.account?.publicRepos ?? null,
+    status: account.status,
+    grantedScopes: account.grantedScopes
+      ? account.grantedScopes.split(/[\s,]+/).filter(Boolean)
+      : [],
+    tokenExpiresAt: account.tokenExpiresAt,
+    hasRefreshToken: Boolean(account.refreshTokenCiphertext),
+    createdAt: account.createdAt,
+    lastSyncAt: nowIso,
+  };
+
+  const normalizedOauth = {
+    status: account.status,
+    scopes: account.grantedScopes
+      ? account.grantedScopes.split(/[\s,]+/).filter(Boolean)
+      : [],
+    connectedAt: account.createdAt,
+    updatedAt: account.updatedAt,
+    tokenExpiresAt: account.tokenExpiresAt,
+    tokenExpiresInSec: providerOverview?.oauth?.tokenExpiresInSec || null,
+    hasRefreshToken: Boolean(account.refreshTokenCiphertext),
+    tokenStatus: 'Stored securely',
+    revocationSupported: Boolean(PROVIDER_CAPABILITIES[account.provider]?.supportsTokenRevocation),
+    revocationEndpoint: providerOverview?.oauth?.revocationEndpoint || null,
+  };
+
+  const normalizedSync = providerOverview?.sync || {
+    status: 'ACTIVE',
+    lastSyncedAt: nowIso,
+    message: null,
+  };
+
+  return {
+    provider: account.provider,
+    account: normalizedAccount,
+    sshKeys: providerOverview?.sshKeys || [],
+    activity: providerOverview?.activity || [],
+    oauth: normalizedOauth,
+    sync: normalizedSync,
+    securityNotice: providerOverview?.securityNotice || null,
+    securityOverview: {
+      twoFactorAuth: providerOverview?.twoFactorAuth || staticCapabilities.twoFactorAuth || {
+        status: CAPABILITY_STATES.NOT_AVAILABLE,
+        detail: 'Two-factor authentication telemetry is not exposed for this account.',
+      },
+      loginHistory: providerOverview?.loginHistory || staticCapabilities.loginHistory || {
+        status: CAPABILITY_STATES.NOT_SUPPORTED,
+        lastLogin: null,
+        recentLogins: [],
+        detail: 'Login history is not supported by this provider via OAuth API.',
+      },
+      passwordSecurity: providerOverview?.passwordSecurity || {
+        status: CAPABILITY_STATES.NOT_AVAILABLE,
+        lastPasswordChange: null,
+        detail: 'Last password change telemetry is not available through the current API integration.',
+      },
+      sessionsAndDevices: providerOverview?.sessionsAndDevices || staticCapabilities.sessionsAndDevices || {
+        status: CAPABILITY_STATES.NOT_SUPPORTED,
+        activeSessions: null,
+        devices: [],
+        detail: 'Active device and session inventory is not exposed via user OAuth API.',
+      },
+      credentialsAndKeys: providerOverview?.credentialsAndKeys || staticCapabilities.credentialsAndKeys || {
+        status: CAPABILITY_STATES.NOT_SUPPORTED,
+        sshKeys: providerOverview?.sshKeys || [],
+        detail: 'SSH keys are not applicable to this provider.',
+      },
+      authorizedApps: providerOverview?.authorizedApps || staticCapabilities.authorizedApps || {
+        status: CAPABILITY_STATES.NOT_AVAILABLE,
+        apps: [],
+        detail: 'Third-party OAuth application inventory is not available.',
+      },
+      tokenGovernance: providerOverview?.tokenGovernance || {
+        status: CAPABILITY_STATES.AVAILABLE,
+        revocationSupported: Boolean(PROVIDER_CAPABILITIES[account.provider]?.supportsTokenRevocation),
+        refreshSupported: Boolean(account.refreshTokenCiphertext),
+        grantedScopes: account.grantedScopes
+          ? account.grantedScopes.split(/[\s,]+/).filter(Boolean)
+          : [],
+      },
+      securitySettings: providerOverview?.securitySettings || {
+        status: CAPABILITY_STATES.AVAILABLE,
+      },
+      securityEvents: {
+        status: CAPABILITY_STATES.AVAILABLE,
+        totalCount: eventsResult.pagination?.total || eventsResult.events.length,
+        events: eventsResult.events.map((e) => ({
+          id: e.id,
+          eventType: e.eventType,
+          occurredAt: e.occurredAt || e.createdAt,
+          severity: e.severity,
+          status: e.status,
+          eventData: e.eventData,
+        })),
+      },
+      capabilities: staticCapabilities,
+      lastSynchronized: nowIso,
+    },
+  };
+}
+
+/**
+ * Returns an aggregated overview across all connected accounts for the operator.
+ *
+ * @param {string} userId
+ * @returns {Promise<object>}
+ */
+async function getAggregatedSecurityOverview(userId) {
+  const accounts = await connectedAccountRepository.listByUserId(userId);
+  const nowIso = new Date().toISOString();
+
+  const accountSummaries = await Promise.all(
+    accounts.map(async (acc) => {
+      const staticCap = PROVIDER_CAPABILITIES[acc.provider]?.securityOverview || {};
+      const eventsCount = await securityEventRepository
+        .listByUserId(userId, { connectedAccountId: acc.id, limit: 1 })
+        .then((res) => res.pagination.total)
+        .catch(() => 0);
+
+      return {
+        id: acc.id,
+        provider: acc.provider,
+        providerAccountId: acc.providerAccountId,
+        displayName: acc.providerDisplayName,
+        status: acc.status,
+        lastSyncAt: acc.lastSyncAt || acc.updatedAt,
+        tokenExpiresAt: acc.tokenExpiresAt,
+        hasRefreshToken: Boolean(acc.refreshTokenCiphertext),
+        scopesCount: acc.grantedScopes ? acc.grantedScopes.split(/[\s,]+/).filter(Boolean).length : 0,
+        securityEventsCount: eventsCount,
+        twoFactorStatus: staticCap.twoFactorAuth?.status || CAPABILITY_STATES.NOT_AVAILABLE,
+        revocationSupported: Boolean(PROVIDER_CAPABILITIES[acc.provider]?.supportsTokenRevocation),
+      };
+    })
+  );
+
+  return {
+    totalAccounts: accounts.length,
+    activeAccounts: accounts.filter((a) => a.status === 'ACTIVE').length,
+    providersEnrolled: [...new Set(accounts.map((a) => a.provider))],
+    lastSynchronized: nowIso,
+    accounts: accountSummaries,
+  };
+}
+
+/**
+ * Manually triggers an incremental security synchronization for a connected account.
+ *
+ * @param {string} userId
+ * @param {string} connectedAccountId
+ * @param {object} [options]
+ * @returns {Promise<object>}
+ */
+async function syncConnectedAccount(userId, connectedAccountId, options = {}) {
+  return await accountSecurityMonitor.syncAccount(userId, connectedAccountId, options);
+}
+
 module.exports = {
   ALLOWED_PROVIDERS,
   resolveProvider,
@@ -415,4 +709,7 @@ module.exports = {
   handleCallback,
   disconnectAccount,
   listConnectedAccounts,
+  getAccountSecurityOverview,
+  getAggregatedSecurityOverview,
+  syncConnectedAccount,
 };

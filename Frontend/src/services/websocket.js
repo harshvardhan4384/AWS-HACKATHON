@@ -32,6 +32,7 @@ class WebSocketService {
     // Listeners: Set of callbacks
     this._stateListeners = new Set();
     this._notificationListeners = new Set();
+    this._securityAlertListeners = new Set();
     this._errorListeners = new Set();
 
     // Reconnection parameters (bounded exponential backoff)
@@ -90,6 +91,16 @@ class WebSocketService {
   onNotification(callback) {
     this._notificationListeners.add(callback);
     return () => this._notificationListeners.delete(callback);
+  }
+
+  /**
+   * Registers a security alert listener (for real-time high-risk modal/banner triggers).
+   * @param {Function} callback (alertDto) => void
+   * @returns {Function} unsubscribe function
+   */
+  onSecurityAlert(callback) {
+    this._securityAlertListeners.add(callback);
+    return () => this._securityAlertListeners.delete(callback);
   }
 
   /**
@@ -206,6 +217,14 @@ class WebSocketService {
         break;
       }
 
+      case 'SECURITY_ALERT': {
+        // High-priority real-time security alert frame
+        if (payload.alert && typeof payload.alert === 'object') {
+          this._dispatchSecurityAlert(payload.alert);
+        }
+        break;
+      }
+
       case 'PONG': {
         // Keepalive acknowledged
         break;
@@ -239,6 +258,20 @@ class WebSocketService {
         listener(notification);
       } catch (err) {
         console.error('[WebSocket] Error in notification listener:', err);
+      }
+    }
+  }
+
+  /**
+   * Dispatches real-time security alert to registered listeners.
+   * @private
+   */
+  _dispatchSecurityAlert(alert) {
+    for (const listener of this._securityAlertListeners) {
+      try {
+        listener(alert);
+      } catch (err) {
+        console.error('[WebSocket] Error in security alert listener:', err);
       }
     }
   }

@@ -168,6 +168,21 @@ async function updateStatus(id, status) {
   });
 }
 
+/**
+ * Updates the lastSyncAt timestamp of a connected account.
+ *
+ * @param {string} id
+ * @param {string} [lastSyncAt]
+ * @returns {Promise<void>}
+ */
+async function updateLastSyncAt(id, lastSyncAt = new Date().toISOString()) {
+  const db = getDb();
+  await db.orm.public.ConnectedAccount.where({ id }).update({
+    lastSyncAt,
+    updatedAt: new Date().toISOString(),
+  });
+}
+
 module.exports = {
   findById,
   findByUserProviderAndAccountId,
@@ -177,4 +192,6 @@ module.exports = {
   upsertConnectedAccount,
   deleteById,
   updateStatus,
+  updateLastSyncAt,
 };
+

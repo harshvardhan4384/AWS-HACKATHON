@@ -10,6 +10,7 @@ export const NotificationProvider = ({ children }) => {
 
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [activeAlert, setActiveAlert] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [connectionState, setConnectionState] = useState(websocketService.getState());
@@ -82,6 +83,22 @@ export const NotificationProvider = ({ children }) => {
         newNotif.message || `Event: ${newNotif.type || 'System Event'}`
       );
     }
+
+    // Trigger high-priority real-time security alert banner if critical/high security event
+    if (newNotif.type === 'SECURITY_ALERT' || severityUpper === 'CRITICAL' || (severityUpper === 'HIGH' && newNotif.incidentId)) {
+      setActiveAlert({
+        id: newNotif.id,
+        title: newNotif.title,
+        message: newNotif.message,
+        incidentId: newNotif.incidentId,
+        provider: newNotif.metadata?.provider || 'ACCOUNT',
+        device: newNotif.metadata?.device,
+        location: newNotif.metadata?.location,
+        timestamp: newNotif.metadata?.timestamp || newNotif.createdAt,
+        source: newNotif.metadata?.source,
+        metadata: newNotif.metadata,
+      });
+    }
   }, [addToast]);
 
   /**
@@ -101,9 +118,14 @@ export const NotificationProvider = ({ children }) => {
       handleIncomingNotification(notif);
     });
 
+    const unsubAlert = websocketService.onSecurityAlert((alert) => {
+      setActiveAlert(alert);
+    });
+
     return () => {
       unsubState();
       unsubNotification();
+      unsubAlert();
     };
   }, [fetchNotifications, handleIncomingNotification]);
 
@@ -177,6 +199,8 @@ export const NotificationProvider = ({ children }) => {
       value={{
         notifications,
         unreadCount,
+        activeAlert,
+        dismissActiveAlert: () => setActiveAlert(null),
         isLoading,
         error,
         connectionState,

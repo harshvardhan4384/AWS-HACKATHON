@@ -18,7 +18,8 @@ const config = {
   isProduction,
   // Never log this value — contains credentials
   databaseUrl: process.env.DATABASE_URL || null,
-  clientUrl: process.env.CLIENT_URL || 'http://localhost:5173',
+  clientUrl: process.env.CLIENT_URL || process.env.FRONTEND_URL || 'http://localhost:5173',
+  frontendUrl: process.env.FRONTEND_URL || process.env.CLIENT_URL || 'http://localhost:5173',
   serverUrl,
   sessionCookieName: process.env.SESSION_COOKIE_NAME || 'recover_session',
   sessionTtlDays: parseInt(process.env.SESSION_TTL_DAYS, 10) || 7,

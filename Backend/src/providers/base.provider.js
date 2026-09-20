@@ -111,6 +111,20 @@ class BaseOAuthProvider {
   async refreshAccessToken(/* refreshToken */) {
     throw new Error(`Provider '${this.name}' does not implement refreshAccessToken()`);
   }
+
+  /**
+   * Retrieves live or normalized security overview metrics for the provider account.
+   * Providers should return honest capability statuses across:
+   * AVAILABLE, NOT_SUPPORTED, NOT_AVAILABLE, ERROR, STALE.
+   *
+   * @param {string} accessToken - Decrypted access token
+   * @param {object} [profile] - Known account profile metadata
+   * @param {object} [options] - Additional query options
+   * @returns {Promise<object>} Normalized security overview
+   */
+  async getSecurityOverview(/* accessToken, profile, options */) {
+    throw new Error(`Provider '${this.name}' does not implement getSecurityOverview()`);
+  }
 }
 
 module.exports = BaseOAuthProvider;
