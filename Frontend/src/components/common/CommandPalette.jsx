@@ -94,11 +94,11 @@ export const CommandPalette = () => {
       run: () => { triggerScenario('pat-leak'); setActiveTab('investigation'); closeCommandPalette(); }
     },
     {
-      id: 'act-sim-okta',
-      title: 'Simulate Attack: Multi-Geo Okta Password Spray',
+      id: 'act-sim-aws',
+      title: 'Simulate Attack: AWS IAM Privilege Escalation & Lateral Movement',
       category: 'Simulation',
       icon: ShieldAlert,
-      run: () => { triggerScenario('okta-spray'); setActiveTab('incidents'); closeCommandPalette(); }
+      run: () => { triggerScenario('aws-escalation'); setActiveTab('incidents'); closeCommandPalette(); }
     }
   ];
 
@@ -110,7 +110,7 @@ export const CommandPalette = () => {
       icon: AlertOctagon,
       run: () => {
         setSelectedIncidentId(inc.id);
-        setActiveTab('investigation');
+        setActiveTab('investigation', inc.id);
         closeCommandPalette();
       }
     });

@@ -127,6 +127,13 @@ enum AuditActorType {
   PROVIDER = "PROVIDER"
 }
 
+/// Purpose of an OTP Challenge (Email Verification vs Password Reset)
+enum OtpPurpose {
+  @@type("pg/text@1")
+  EMAIL_VERIFICATION = "EMAIL_VERIFICATION"
+  PASSWORD_RESET     = "PASSWORD_RESET"
+}
+
 // =============================================================================
 // MODELS
 // =============================================================================
@@ -134,14 +141,20 @@ enum AuditActorType {
 /// Re:COVER platform user — owns all connected accounts, events, and incidents.
 /// Does NOT store provider passwords or raw OAuth tokens.
 model User {
-  id           String        @id @default(uuid())
-  email        String        @unique
-  displayName  String?
+  id                       String            @id @default(uuid())
+  email                    String            @unique
+  displayName              String?
+  avatarUrl                String?
+  phoneNumber              String?
+  emailVerifiedAt          TimestamptzString?
   /// Salted bcrypt hash of the user password. Nullable for future WebAuthn/Passkey users.
-  passwordHash String?
-  status       AccountStatus @default(ACTIVE)
-  createdAt    TimestamptzString @default(dbgenerated("now()"))
-  updatedAt    TimestamptzString @default(dbgenerated("now()"))
+  passwordHash             String?
+  twoFactorEnabled         Boolean           @default(false)
+  /// SECURITY: AES-256-GCM ciphertext of TOTP secret key. Never store plaintext.
+  twoFactorSecretEncrypted String?
+  status                   AccountStatus     @default(ACTIVE)
+  createdAt                TimestamptzString @default(dbgenerated("now()"))
+  updatedAt                TimestamptzString @default(dbgenerated("now()"))
 
   // Relations
   sessions          Session[]
@@ -152,6 +165,8 @@ model User {
   agentRuns         AgentRun[]
   approvals         Approval[]
   auditLogs         AuditLog[]
+  otpChallenges     OtpChallenge[]
+  recoveryCodes     TwoFactorRecoveryCode[]
 }
 
 /// A secure server-side session for an authenticated Re:COVER user.
@@ -510,4 +525,41 @@ model AuditLog {
   @@index([correlationId])
   @@index([occurredAt])
   @@index([userId, occurredAt])
+}
+
+/// Ephemeral OTP challenge for email verification or password reset.
+/// SECURITY: Plaintext OTP is NEVER stored. codeHash stores the SHA-256 hash.
+model OtpChallenge {
+  id           String            @id @default(uuid())
+  userId       String?
+  email        String
+  purpose      OtpPurpose
+  codeHash     String
+  expiresAt    TimestamptzString
+  attemptCount Int               @default(0)
+  maxAttempts  Int               @default(5)
+  consumedAt   TimestamptzString?
+  createdAt    TimestamptzString @default(dbgenerated("now()"))
+
+  // Relations
+  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([email, purpose])
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+/// Single-use recovery codes for TOTP 2FA backup access.
+/// SECURITY: Plaintext recovery code is NEVER stored. codeHash stores the SHA-256 hash.
+model TwoFactorRecoveryCode {
+  id        String            @id @default(uuid())
+  userId    String
+  codeHash  String
+  usedAt    TimestamptzString?
+  createdAt TimestamptzString @default(dbgenerated("now()"))
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }

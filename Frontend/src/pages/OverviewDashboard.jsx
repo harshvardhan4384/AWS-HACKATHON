@@ -16,17 +16,22 @@ import {
 export const OverviewDashboard = () => {
   const {
     incidents,
+    isIncidentsLoading,
     setSelectedIncidentId,
     setActiveTab,
     connectedAccounts,
     containIncident,
     openConnectModal,
     triggerScenario,
-    telemetryLogs
+    telemetryLogs,
+    isEventsLoading
   } = useSecurity();
 
-  const totalIdentities = connectedAccounts.reduce((acc, a) => acc + a.identitiesCount, 0);
-  const activeIncidents = incidents.filter(i => i.status === 'investigating' || i.status === 'mitigating');
+  const totalIdentities = connectedAccounts.reduce((acc, a) => acc + (a.identitiesCount || 0), 0);
+  const activeIncidents = incidents.filter(i => {
+    const st = (i.status || '').toLowerCase();
+    return st === 'open' || st === 'investigating' || st === 'mitigating' || st === 'containment_required' || st === 'recovery_required';
+  });
 
   return (
     <div className="w-full space-y-6 animate-in fade-in duration-200">
@@ -100,34 +105,36 @@ export const OverviewDashboard = () => {
           </div>
         </div>
 
-        {/* Card 3: Mean Time to Contain */}
+        {/* Card 3: Security Events Ingested */}
         <div className="p-5 rounded-2xl bg-surface-container border border-white/5 shadow-lg space-y-3">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-mono text-outline uppercase font-medium">Mean Time to Contain</span>
-            <div className="p-2 rounded-lg bg-secondary/10 text-secondary">
-              <Zap className="w-4 h-4" />
+            <span className="text-xs font-mono text-outline uppercase font-medium">Events Ingested</span>
+            <div className="p-2 rounded-lg bg-primary/10 text-primary">
+              <Activity className="w-4 h-4" />
             </div>
           </div>
           <div>
-            <p className="text-2xl font-headline font-bold text-secondary font-mono">4.2s</p>
+            <p className="text-2xl font-headline font-bold text-primary font-mono">{telemetryLogs.length.toLocaleString()}</p>
             <p className="text-[11px] text-on-surface-variant mt-1">
-              99.8% Autonomous Isolation Rate
+              Normalized Live Telemetry Feed
             </p>
           </div>
         </div>
 
-        {/* Card 4: Fabric Health Score */}
+        {/* Card 4: Resolved Incidents */}
         <div className="p-5 rounded-2xl bg-surface-container border border-white/5 shadow-lg space-y-3">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-mono text-outline uppercase font-medium">Fabric Health Score</span>
-            <div className="p-2 rounded-lg bg-primary/10 text-primary">
+            <span className="text-xs font-mono text-outline uppercase font-medium">Resolved Incidents</span>
+            <div className="p-2 rounded-lg bg-secondary/10 text-secondary">
               <ShieldCheck className="w-4 h-4" />
             </div>
           </div>
           <div>
-            <p className="text-2xl font-headline font-bold text-primary font-mono">96.4%</p>
+            <p className="text-2xl font-headline font-bold text-secondary font-mono">
+              {incidents.filter(i => (i.status || '').toLowerCase() === 'resolved').length}
+            </p>
             <p className="text-[11px] text-on-surface-variant mt-1">
-              Zero-Trust Verification Active
+              Verified Post-Containment
             </p>
           </div>
         </div>
@@ -152,48 +159,59 @@ export const OverviewDashboard = () => {
           </div>
 
           <div className="divide-y divide-white/5 space-y-2">
-            {incidents.slice(0, 4).map(inc => (
-              <div
-                key={inc.id}
-                className="pt-3 pb-2 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-surface-container-high p-2 rounded-xl transition-colors"
-              >
-                <div className="space-y-1 flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono text-xs font-bold text-primary">{inc.refCode}</span>
-                    <span className={`px-2 py-0.2 rounded text-[9px] font-mono font-bold uppercase ${
-                      inc.severity === 'critical' ? 'bg-error text-on-error' : inc.severity === 'high' ? 'bg-amber-500 text-black' : 'bg-primary/20 text-primary'
-                    }`}>
-                      {inc.severity}
-                    </span>
-                    <span className="text-[10px] text-outline font-mono">{inc.timestamp}</span>
-                  </div>
-                  <h4 className="text-xs font-semibold text-on-surface">{inc.title}</h4>
-                  <p className="text-[11px] text-on-surface-variant line-clamp-1">{inc.targetResource}</p>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => {
-                      setSelectedIncidentId(inc.id);
-                      setActiveTab('investigation');
-                    }}
-                    className="px-3 py-1.5 rounded-lg bg-surface-container-highest hover:bg-surface-variant text-xs text-on-surface transition-colors flex items-center gap-1 font-medium"
-                  >
-                    <BrainCircuit className="w-3.5 h-3.5 text-primary" />
-                    <span>AI Investigate</span>
-                  </button>
-
-                  {inc.status !== 'contained' && inc.status !== 'resolved' && (
-                    <button
-                      onClick={() => containIncident(inc.id)}
-                      className="px-3 py-1.5 rounded-lg bg-error/15 text-error hover:bg-error/25 text-xs font-semibold transition-colors"
-                    >
-                      Contain Vector
-                    </button>
-                  )}
-                </div>
+            {isIncidentsLoading ? (
+              <div className="p-8 text-center text-xs text-outline font-mono animate-pulse">
+                Syncing threat intelligence queue...
               </div>
-            ))}
+            ) : incidents.length === 0 ? (
+              <div className="p-8 text-center rounded-xl bg-surface-container-lowest/50 border border-white/5 space-y-1">
+                <p className="text-xs text-secondary font-semibold">No active threat vectors detected</p>
+                <p className="text-[11px] text-outline">Digital Immune Fabric is nominal. Zero active security anomalies.</p>
+              </div>
+            ) : (
+              incidents.slice(0, 4).map(inc => (
+                <div
+                  key={inc.id}
+                  className="pt-3 pb-2 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-surface-container-high p-2 rounded-xl transition-colors"
+                >
+                  <div className="space-y-1 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-xs font-bold text-primary">{inc.refCode}</span>
+                      <span className={`px-2 py-0.2 rounded text-[9px] font-mono font-bold uppercase ${
+                        inc.severity === 'critical' ? 'bg-error text-on-error' : inc.severity === 'high' ? 'bg-amber-500 text-black' : 'bg-primary/20 text-primary'
+                      }`}>
+                        {inc.severity}
+                      </span>
+                      <span className="text-[10px] text-outline font-mono">{inc.timestamp}</span>
+                    </div>
+                    <h4 className="text-xs font-semibold text-on-surface">{inc.title}</h4>
+                    <p className="text-[11px] text-on-surface-variant line-clamp-1">{inc.targetResource}</p>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => {
+                        setSelectedIncidentId(inc.id);
+                        setActiveTab('investigation');
+                      }}
+                      className="px-3 py-1.5 rounded-lg bg-surface-container-highest hover:bg-surface-variant text-xs text-on-surface transition-colors flex items-center gap-1 font-medium"
+                    >
+                      <BrainCircuit className="w-3.5 h-3.5 text-primary" />
+                      <span>AI Investigate</span>
+                    </button>
+
+                    {inc.status !== 'contained' && inc.status !== 'resolved' && (
+                      <button
+                        onClick={() => containIncident(inc.id)}
+                        className="px-3 py-1.5 rounded-lg bg-error/15 text-error hover:bg-error/25 text-xs font-semibold transition-colors"
+                      >
+                        Contain Vector
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
 
@@ -213,24 +231,36 @@ export const OverviewDashboard = () => {
           </div>
 
           <div className="space-y-3 max-h-[340px] overflow-y-auto pr-1">
-            {connectedAccounts.map(acc => (
-              <div
-                key={acc.id}
-                className="p-3 rounded-xl bg-surface-container-lowest border border-white/5 flex items-center justify-between"
-              >
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-on-surface">{acc.name}</span>
-                    <span className={`w-2 h-2 rounded-full ${acc.status === 'connected' ? 'bg-secondary' : 'bg-amber-400'}`}></span>
-                  </div>
-                  <p className="text-[10px] text-outline font-mono mt-0.5">{acc.identitiesCount} identities monitored</p>
-                </div>
-                <div className="text-right">
-                  <span className="font-mono text-xs text-secondary font-semibold">{acc.healthScore}%</span>
-                  <p className="text-[9px] text-outline">Health Score</p>
-                </div>
+            {connectedAccounts.length === 0 ? (
+              <div className="p-6 text-center rounded-xl bg-surface-container-lowest/50 border border-white/5 space-y-2">
+                <p className="text-xs text-outline">No identity fabrics connected yet.</p>
+                <button
+                  onClick={openConnectModal}
+                  className="px-3 py-1.5 rounded-lg bg-primary text-on-primary text-xs font-semibold hover:bg-primary-container transition-all"
+                >
+                  Connect Fabric
+                </button>
               </div>
-            ))}
+            ) : (
+              connectedAccounts.map(acc => (
+                <div
+                  key={acc.id}
+                  className="p-3 rounded-xl bg-surface-container-lowest border border-white/5 flex items-center justify-between"
+                >
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-on-surface">{acc.name}</span>
+                      <span className={`w-2 h-2 rounded-full ${acc.status === 'connected' ? 'bg-secondary' : 'bg-amber-400'}`}></span>
+                    </div>
+                    <p className="text-[10px] text-outline font-mono mt-0.5">{acc.identitiesCount} identities monitored</p>
+                  </div>
+                  <div className="text-right">
+                    <span className="font-mono text-xs text-secondary font-semibold uppercase">{acc.status || 'CONNECTED'}</span>
+                    <p className="text-[9px] text-outline">Connector</p>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
       </div>
@@ -251,25 +281,34 @@ export const OverviewDashboard = () => {
         </div>
 
         <div className="font-mono text-xs divide-y divide-white/5 max-h-48 overflow-y-auto">
-          {telemetryLogs.slice(0, 5).map(log => (
-            <div key={log.id} className="py-2 flex items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <span className="text-outline text-[10px]">{log.timestamp}</span>
-                <span className={`px-1.5 py-0.2 rounded text-[9px] font-bold ${
-                  log.level === 'SEC_CRIT' ? 'bg-error text-on-error' : log.level === 'WARN' ? 'bg-amber-500 text-black' : 'bg-surface-container-highest text-primary'
-                }`}>
-                  {log.level}
-                </span>
-                <span className="text-on-surface">{log.service}: {log.eventType}</span>
-              </div>
-              <span className={`text-[10px] font-bold ${log.status === 'INTERCEPTED' ? 'text-secondary' : 'text-outline'}`}>
-                [{log.status}]
-              </span>
+          {isEventsLoading && telemetryLogs.length === 0 ? (
+            <div className="py-6 text-center text-xs text-outline font-mono animate-pulse">
+              Ingesting telemetry stream...
             </div>
-          ))}
+          ) : telemetryLogs.length === 0 ? (
+            <div className="py-6 text-center text-xs text-outline font-mono">
+              No security events recorded yet in the stream buffer.
+            </div>
+          ) : (
+            telemetryLogs.slice(0, 5).map(log => (
+              <div key={log.id} className="py-2 flex items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <span className="text-outline text-[10px]">{log.timestamp}</span>
+                  <span className={`px-1.5 py-0.2 rounded text-[9px] font-bold ${
+                    log.level === 'SEC_CRIT' ? 'bg-error text-on-error' : log.level === 'WARN' ? 'bg-amber-500 text-black' : 'bg-surface-container-highest text-primary'
+                  }`}>
+                    {log.level}
+                  </span>
+                  <span className="text-on-surface">{log.service}: {log.eventType}</span>
+                </div>
+                <span className={`text-[10px] font-bold ${log.status === 'INTERCEPTED' ? 'text-secondary' : 'text-outline'}`}>
+                  [{log.status}]
+                </span>
+              </div>
+            ))
+          )}
         </div>
       </div>
     </div>
   );
 };
-

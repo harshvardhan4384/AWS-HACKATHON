@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSecurity } from '../context/SecurityContext';
 import {
   AlertOctagon,
@@ -8,34 +8,84 @@ import {
   ChevronDown,
   ChevronUp,
   Play,
-  CheckCircle2
+  CheckCircle2,
+  RefreshCw,
+  ChevronLeft,
+  ChevronRight,
+  ShieldCheck
 } from 'lucide-react';
 
 export const IncidentsHub = () => {
   const {
     incidents,
+    isIncidentsLoading,
+    incidentsError,
+    incidentsPagination,
+    fetchIncidents,
+    fetchIncidentDetails,
+    selectedIncidentId,
     setSelectedIncidentId,
     setActiveTab,
     containIncident,
     updateIncidentStatus,
-    triggerScenario
+    triggerScenario,
+    addToast
   } = useSecurity();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSeverity, setSelectedSeverity] = useState('all');
   const [selectedStatus, setSelectedStatus] = useState('all');
   const [selectedProvider, setSelectedProvider] = useState('all');
-  const [expandedIncidentId, setExpandedIncidentId] = useState('inc-1');
+  const [expandedIncidentId, setExpandedIncidentId] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+
+  // Fetch incidents when page, status, or severity changes
+  useEffect(() => {
+    fetchIncidents({
+      page: currentPage,
+      status: selectedStatus !== 'all' ? selectedStatus : undefined,
+      severity: selectedSeverity !== 'all' ? selectedSeverity : undefined
+    });
+  }, [currentPage, selectedStatus, selectedSeverity, fetchIncidents]);
+
+  // Auto-expand deep-linked incident when navigated directly or when active incident changes
+  useEffect(() => {
+    if (selectedIncidentId && incidents.some(i => i.id === selectedIncidentId)) {
+      setExpandedIncidentId(selectedIncidentId);
+      fetchIncidentDetails(selectedIncidentId);
+    }
+  }, [selectedIncidentId, incidents, fetchIncidentDetails]);
+
+  const handleExpand = (id) => {
+    if (expandedIncidentId === id) {
+      setExpandedIncidentId(null);
+    } else {
+      setExpandedIncidentId(id);
+      setSelectedIncidentId(id);
+      fetchIncidentDetails(id);
+    }
+  };
+
+  const handleRefresh = () => {
+    fetchIncidents({
+      page: currentPage,
+      status: selectedStatus !== 'all' ? selectedStatus : undefined,
+      severity: selectedSeverity !== 'all' ? selectedSeverity : undefined
+    });
+    if (addToast) {
+      addToast('info', 'Refreshed', 'Incident triage queue updated.');
+    }
+  };
 
   const filteredIncidents = incidents.filter(inc => {
     const matchesQuery =
-      inc.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      inc.refCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      inc.targetResource.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      inc.actor.ip.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesSeverity = selectedSeverity === 'all' || inc.severity === selectedSeverity;
-    const matchesStatus = selectedStatus === 'all' || inc.status === selectedStatus;
-    const matchesProvider = selectedProvider === 'all' || inc.provider === selectedProvider;
+      (inc.title || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (inc.refCode || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (inc.targetResource || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (inc.actor?.ip || '').toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSeverity = selectedSeverity === 'all' || (inc.severity || '').toLowerCase() === selectedSeverity.toLowerCase();
+    const matchesStatus = selectedStatus === 'all' || (inc.status || '').toLowerCase() === selectedStatus.toLowerCase();
+    const matchesProvider = selectedProvider === 'all' || (inc.provider || '').toLowerCase() === selectedProvider.toLowerCase();
     return matchesQuery && matchesSeverity && matchesStatus && matchesProvider;
   });
 
@@ -47,7 +97,7 @@ export const IncidentsHub = () => {
           <div className="flex items-center gap-2">
             <span className="font-mono text-xs text-error font-bold uppercase tracking-wider">THREAT INTELLIGENCE</span>
             <span className="w-1 h-1 rounded-full bg-outline"></span>
-            <span className="font-mono text-xs text-outline">{incidents.length} TOTAL DETECTIONS</span>
+            <span className="font-mono text-xs text-outline">{incidentsPagination?.total ?? incidents.length} TOTAL DETECTIONS</span>
           </div>
           <h1 className="font-headline font-bold text-2xl text-on-surface mt-1">
             Incidents & Threat Triage Center
@@ -59,6 +109,15 @@ export const IncidentsHub = () => {
 
         <div className="flex items-center gap-2.5">
           <button
+            onClick={handleRefresh}
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-surface-container-high border border-white/10 text-on-surface hover:bg-surface-variant font-semibold text-xs transition-colors shadow-sm"
+            title="Refresh Incidents"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isIncidentsLoading ? 'animate-spin text-primary' : ''}`} />
+            <span>Refresh</span>
+          </button>
+
+          <button
             onClick={() => triggerScenario('pat-leak')}
             className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-error/15 border border-error/30 text-error hover:bg-error/25 font-semibold text-xs transition-colors shadow-sm"
           >
@@ -67,6 +126,15 @@ export const IncidentsHub = () => {
           </button>
         </div>
       </div>
+
+      {incidentsError && (
+        <div className="p-4 rounded-xl bg-error/10 border border-error/20 flex items-center justify-between text-xs text-error">
+          <span>{incidentsError}</span>
+          <button onClick={handleRefresh} className="underline font-semibold hover:text-error/80">
+            Retry
+          </button>
+        </div>
+      )}
 
       {/* Filter & Search Bar */}
       <div className="p-4 rounded-2xl bg-surface-container border border-white/5 shadow-md space-y-4">
@@ -86,15 +154,16 @@ export const IncidentsHub = () => {
           {/* Provider Dropdown */}
           <select
             value={selectedProvider}
-            onChange={e => setSelectedProvider(e.target.value)}
+            onChange={e => {
+              setSelectedProvider(e.target.value);
+              setCurrentPage(1);
+            }}
             className="px-3 py-2 bg-surface-container-lowest border border-white/10 rounded-xl text-xs text-on-surface focus:outline-none focus:border-primary font-mono cursor-pointer"
           >
             <option value="all">All Cloud Providers</option>
-            <option value="aws">AWS Cloud</option>
-            <option value="github">GitHub</option>
-            <option value="google">Google Workspace</option>
-            <option value="okta">Okta Identity</option>
-            <option value="slack">Slack Grid</option>
+            <option value="google">Google Cloud / Workspace</option>
+            <option value="github">GitHub Enterprise</option>
+            <option value="aws">AWS (Simulated)</option>
           </select>
         </div>
 
@@ -105,7 +174,10 @@ export const IncidentsHub = () => {
             {['all', 'critical', 'high', 'medium', 'low'].map(sev => (
               <button
                 key={sev}
-                onClick={() => setSelectedSeverity(sev)}
+                onClick={() => {
+                  setSelectedSeverity(sev);
+                  setCurrentPage(1);
+                }}
                 className={`px-2.5 py-1 rounded-lg font-mono text-[11px] uppercase transition-colors ${
                   selectedSeverity === sev
                     ? 'bg-primary text-on-primary font-bold shadow-sm'
@@ -119,17 +191,20 @@ export const IncidentsHub = () => {
 
           <div className="flex flex-wrap items-center gap-2">
             <span className="font-mono text-[10px] text-outline uppercase mr-1">Status:</span>
-            {['all', 'investigating', 'mitigating', 'contained', 'resolved'].map(st => (
+            {['all', 'open', 'investigating', 'containment_required', 'recovery_required', 'resolved'].map(st => (
               <button
                 key={st}
-                onClick={() => setSelectedStatus(st)}
+                onClick={() => {
+                  setSelectedStatus(st);
+                  setCurrentPage(1);
+                }}
                 className={`px-2.5 py-1 rounded-lg font-mono text-[11px] uppercase transition-colors ${
                   selectedStatus === st
                     ? 'bg-secondary text-on-secondary font-bold shadow-sm'
                     : 'bg-surface-container-lowest text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high'
                 }`}
               >
-                {st}
+                {st.replace('_', ' ')}
               </button>
             ))}
           </div>
@@ -138,7 +213,11 @@ export const IncidentsHub = () => {
 
       {/* Incidents List Table */}
       <div className="space-y-3">
-        {filteredIncidents.length === 0 ? (
+        {isIncidentsLoading && filteredIncidents.length === 0 ? (
+          <div className="p-12 text-center rounded-2xl bg-surface-container border border-white/5 text-outline text-xs font-mono animate-pulse">
+            Querying threat intelligence database...
+          </div>
+        ) : filteredIncidents.length === 0 ? (
           <div className="p-12 text-center rounded-2xl bg-surface-container border border-white/5 text-outline text-xs">
             <CheckCircle2 className="w-10 h-10 text-secondary mx-auto mb-2 opacity-80" />
             No incidents matched the selected filter criteria.
@@ -153,7 +232,7 @@ export const IncidentsHub = () => {
               >
                 {/* Main Incident Card Row */}
                 <div
-                  onClick={() => setExpandedIncidentId(isExpanded ? null : inc.id)}
+                  onClick={() => handleExpand(inc.id)}
                   className="p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4 cursor-pointer hover:bg-surface-container-high/40 transition-colors"
                 >
                   <div className="flex items-start gap-3.5 flex-1">
@@ -246,7 +325,7 @@ export const IncidentsHub = () => {
                         <button
                           onClick={() => {
                             setSelectedIncidentId(inc.id);
-                            setActiveTab('investigation');
+                            setActiveTab('investigation', inc.id);
                           }}
                           className="px-4 py-2 rounded-xl bg-primary text-on-primary font-semibold text-xs flex items-center gap-1.5 hover:bg-primary-container transition-all shadow-md"
                         >
@@ -257,12 +336,23 @@ export const IncidentsHub = () => {
                         <button
                           onClick={() => {
                             setSelectedIncidentId(inc.id);
-                            setActiveTab('blast-radius');
+                            setActiveTab('blast-radius', inc.id);
                           }}
                           className="px-4 py-2 rounded-xl bg-surface-container-high hover:bg-surface-variant text-on-surface font-semibold text-xs flex items-center gap-1.5 transition-colors border border-white/5"
                         >
                           <ShieldAlert className="w-4 h-4 text-primary" />
                           <span>View Attack Graph</span>
+                        </button>
+
+                        <button
+                          onClick={() => {
+                            setSelectedIncidentId(inc.id);
+                            setActiveTab('recovery', inc.id);
+                          }}
+                          className="px-3.5 py-2 rounded-xl bg-surface-container-high hover:bg-surface-variant text-on-surface font-semibold text-xs flex items-center gap-1.5 transition-colors border border-white/5"
+                        >
+                          <ShieldCheck className="w-4 h-4 text-secondary" />
+                          <span>Recovery</span>
                         </button>
                       </div>
 
@@ -291,7 +381,33 @@ export const IncidentsHub = () => {
           })
         )}
       </div>
+
+      {/* Pagination Controls */}
+      {incidentsPagination && (
+        <div className="flex flex-wrap items-center justify-between p-4 rounded-2xl bg-surface-container border border-white/5 text-xs font-mono text-outline gap-2">
+          <span>
+            Page {incidentsPagination.page} of {incidentsPagination.totalPages || 1} ({incidentsPagination.total} total detections)
+          </span>
+          <div className="flex items-center gap-1.5">
+            <button
+              disabled={incidentsPagination.page <= 1 || isIncidentsLoading}
+              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              className="px-2.5 py-1 rounded-lg bg-surface-container-highest hover:bg-surface-variant disabled:opacity-30 disabled:cursor-not-allowed text-on-surface flex items-center gap-1 font-sans text-xs transition-colors"
+            >
+              <ChevronLeft className="w-3.5 h-3.5" />
+              <span>Prev</span>
+            </button>
+            <button
+              disabled={!incidentsPagination.hasMore || isIncidentsLoading}
+              onClick={() => setCurrentPage(p => p + 1)}
+              className="px-2.5 py-1 rounded-lg bg-surface-container-highest hover:bg-surface-variant disabled:opacity-30 disabled:cursor-not-allowed text-on-surface flex items-center gap-1 font-sans text-xs transition-colors"
+            >
+              <span>Next</span>
+              <ChevronRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
-

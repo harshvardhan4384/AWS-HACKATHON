@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useSecurity } from '../../context/SecurityContext';
-import { Shield, Bell, Search, User, LogOut, ChevronDown, CheckCircle2, AlertTriangle, Play } from 'lucide-react';
+import { useNotifications } from '../../context/NotificationContext';
+import { Shield, Bell, Search, User, LogOut, ChevronDown, CheckCircle2, AlertTriangle, Play, Check, ShieldAlert } from 'lucide-react';
 
 export const Header = ({ isLanding = false }) => {
   const {
@@ -15,6 +16,14 @@ export const Header = ({ isLanding = false }) => {
     incidents,
     setSelectedIncidentId
   } = useSecurity();
+
+  const {
+    notifications,
+    unreadCount,
+    markAsRead,
+    markAllAsRead,
+    connectionState
+  } = useNotifications();
 
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
@@ -155,50 +164,117 @@ export const Header = ({ isLanding = false }) => {
           <button
             onClick={() => setIsNotifOpen(prev => !prev)}
             className="relative text-on-surface-variant hover:text-on-surface transition-colors p-2 rounded-lg hover:bg-surface-container-high"
-            title="Notifications"
+            title="Real-Time Security Notifications"
           >
             <Bell className="w-4 h-4" />
-            {activeIncidents.length > 0 && (
-              <span className="absolute top-1 right-1 w-4 h-4 bg-error text-on-error font-mono text-[9px] font-bold flex items-center justify-center rounded-full">
-                {activeIncidents.length}
+            {unreadCount > 0 && (
+              <span className="absolute top-1 right-1 w-4 h-4 bg-error text-on-error font-mono text-[9px] font-bold flex items-center justify-center rounded-full animate-pulse">
+                {unreadCount > 99 ? '99+' : unreadCount}
               </span>
             )}
           </button>
 
           {isNotifOpen && (
-            <div className="absolute right-0 mt-2 w-80 sm:w-96 rounded-xl bg-surface-container border border-white/10 shadow-2xl p-4 z-50">
+            <div className="absolute right-0 mt-2 w-80 sm:w-96 rounded-xl bg-surface-container border border-white/10 shadow-2xl p-4 z-50 animate-in fade-in duration-150">
+              {/* Header */}
               <div className="flex items-center justify-between pb-3 border-b border-white/5">
-                <span className="font-headline font-semibold text-sm text-on-surface">Active Security Alerts</span>
-                <span className="text-xs text-primary font-mono">{activeIncidents.length} active</span>
+                <div className="flex items-center gap-2">
+                  <span className="font-headline font-semibold text-sm text-on-surface">Security Notifications</span>
+                  {unreadCount > 0 && (
+                    <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-primary/10 text-primary border border-primary/20">
+                      {unreadCount} unread
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2">
+                  {/* Connection indicator */}
+                  <div
+                    className="flex items-center gap-1.5 text-[10px] font-mono px-2 py-0.5 rounded bg-surface-container-lowest border border-white/5"
+                    title={`WebSocket: ${connectionState}`}
+                  >
+                    <span className={`w-1.5 h-1.5 rounded-full ${
+                      connectionState === 'CONNECTED' ? 'bg-secondary animate-pulse' :
+                      connectionState === 'RECONNECTING' || connectionState === 'CONNECTING' ? 'bg-amber-400 animate-ping' :
+                      'bg-outline'
+                    }`}></span>
+                    <span className="text-outline uppercase text-[9px]">
+                      {connectionState === 'CONNECTED' ? 'LIVE' : connectionState.toLowerCase()}
+                    </span>
+                  </div>
+
+                  {unreadCount > 0 && (
+                    <button
+                      onClick={() => markAllAsRead()}
+                      className="text-[11px] text-outline hover:text-primary transition-colors flex items-center gap-1 font-medium"
+                      title="Mark all notifications as read"
+                    >
+                      <Check className="w-3 h-3" />
+                      <span className="hidden sm:inline">Mark all</span>
+                    </button>
+                  )}
+                </div>
               </div>
-              <div className="divide-y divide-white/5 max-h-72 overflow-y-auto mt-2">
-                {activeIncidents.length === 0 ? (
-                  <div className="py-6 text-center text-xs text-outline">
-                    <CheckCircle2 className="w-8 h-8 text-secondary mx-auto mb-2 opacity-80" />
-                    All systems nominal. No active threats detected.
+
+              {/* Notification List */}
+              <div className="divide-y divide-white/5 max-h-80 overflow-y-auto mt-2 pr-1">
+                {notifications.length === 0 ? (
+                  <div className="py-8 text-center text-xs text-outline space-y-2">
+                    <CheckCircle2 className="w-7 h-7 text-secondary mx-auto opacity-80" />
+                    <p className="font-medium text-on-surface-variant">All systems nominal.</p>
+                    <p className="text-[11px] text-outline">No security notifications or active alerts.</p>
                   </div>
                 ) : (
-                  activeIncidents.map(inc => (
-                    <div
-                      key={inc.id}
-                      onClick={() => {
-                        setSelectedIncidentId(inc.id);
-                        setActiveTab('investigation');
-                        setIsNotifOpen(false);
-                      }}
-                      className="py-3 px-2 hover:bg-surface-container-high rounded-lg cursor-pointer transition-colors"
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-mono font-medium text-error flex items-center gap-1.5">
-                          <AlertTriangle className="w-3.5 h-3.5" />
-                          {inc.refCode}
-                        </span>
-                        <span className="text-[10px] text-outline">{inc.timestamp}</span>
+                  notifications.map(notif => {
+                    const isUnread = !notif.read;
+                    const sev = (notif.severity || 'INFO').toUpperCase();
+                    const badgeClass =
+                      sev === 'CRITICAL' ? 'bg-error/15 text-error border-error/30' :
+                      sev === 'HIGH' ? 'bg-amber-400/15 text-amber-400 border-amber-400/30' :
+                      sev === 'MEDIUM' ? 'bg-amber-300/15 text-amber-300 border-amber-300/30' :
+                      'bg-primary/15 text-primary border-primary/30';
+
+                    return (
+                      <div
+                        key={notif.id}
+                        onClick={() => {
+                          if (isUnread) markAsRead(notif.id);
+                          setIsNotifOpen(false);
+                          if (notif.incidentId) {
+                            setSelectedIncidentId(notif.incidentId);
+                            setActiveTab('investigation', notif.incidentId);
+                          } else if (notif.recoveryActionId || notif.approvalId) {
+                            setActiveTab('recovery');
+                          }
+                        }}
+                        className={`py-3 px-2.5 rounded-lg cursor-pointer transition-all hover:bg-surface-container-high ${
+                          isUnread ? 'bg-surface-container-lowest/60 border-l-2 border-primary' : ''
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <span className={`text-[10px] font-mono font-bold uppercase px-1.5 py-0.2 rounded border ${badgeClass}`}>
+                              {sev}
+                            </span>
+                            <span className="text-[10px] font-mono text-outline truncate">
+                              {notif.type || 'ALERT'}
+                            </span>
+                          </div>
+                          <span className="text-[10px] text-outline whitespace-nowrap">
+                            {notif.createdAt ? new Date(notif.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Now'}
+                          </span>
+                        </div>
+                        <p className={`text-xs mt-1.5 line-clamp-1 ${isUnread ? 'font-semibold text-on-surface' : 'text-on-surface-variant'}`}>
+                          {notif.title}
+                        </p>
+                        {notif.message && (
+                          <p className="text-[11px] text-on-surface-variant mt-0.5 line-clamp-2 leading-relaxed">
+                            {notif.message}
+                          </p>
+                        )}
                       </div>
-                      <p className="text-xs text-on-surface mt-1 line-clamp-1">{inc.title}</p>
-                      <p className="text-[11px] text-on-surface-variant mt-0.5">{inc.targetResource}</p>
-                    </div>
-                  ))
+                    );
+                  })
                 )}
               </div>
             </div>
@@ -212,11 +288,11 @@ export const Header = ({ isLanding = false }) => {
             className="flex items-center gap-3 pl-3 border-l border-surface-container-high hover:opacity-90 transition-opacity"
           >
             <div className="hidden sm:flex flex-col text-right">
-              <span className="text-xs text-on-surface font-medium leading-none">{currentUser?.name || 'Alex Vance'}</span>
-              <span className="text-[10px] font-mono text-primary leading-none mt-1">{currentUser?.tier || 'Security Tier 1'}</span>
+              <span className="text-xs text-on-surface font-medium leading-none">{currentUser?.displayName || currentUser?.name || currentUser?.email || 'SecOps Analyst'}</span>
+              <span className="text-[10px] font-mono text-primary leading-none mt-1">{currentUser?.role || 'Security Tier 1'}</span>
             </div>
             <div className="w-8 h-8 rounded-full bg-primary/20 border border-primary/40 flex items-center justify-center text-primary font-bold text-xs">
-              {currentUser?.name ? currentUser.name.charAt(0) : 'A'}
+              {(currentUser?.displayName || currentUser?.name || currentUser?.email || 'U').charAt(0).toUpperCase()}
             </div>
             <ChevronDown className="w-3 h-3 text-outline hidden sm:block" />
           </button>
@@ -224,9 +300,19 @@ export const Header = ({ isLanding = false }) => {
           {isProfileOpen && (
             <div className="absolute right-0 mt-2 w-56 rounded-xl bg-surface-container border border-white/10 shadow-2xl p-2 z-50">
               <div className="px-3 py-2 border-b border-white/5 mb-1">
-                <p className="text-xs font-semibold text-on-surface">{currentUser?.name || 'Alex Vance'}</p>
-                <p className="text-[11px] text-outline truncate">{currentUser?.email || 'alex@enterprise.io'}</p>
+                <p className="text-xs font-semibold text-on-surface">{currentUser?.displayName || currentUser?.name || 'SecOps Analyst'}</p>
+                <p className="text-[11px] text-outline truncate">{currentUser?.email || ''}</p>
               </div>
+              <button
+                onClick={() => {
+                  setActiveTab('profile');
+                  setIsProfileOpen(false);
+                }}
+                className="w-full text-left px-3 py-2 text-xs text-on-surface hover:bg-surface-container-high rounded-lg transition-colors flex items-center gap-2"
+              >
+                <Shield className="w-3.5 h-3.5 text-primary" />
+                Security & Operator Profile
+              </button>
               <button
                 onClick={() => {
                   setActiveTab('accounts');
@@ -234,14 +320,13 @@ export const Header = ({ isLanding = false }) => {
                 }}
                 className="w-full text-left px-3 py-2 text-xs text-on-surface hover:bg-surface-container-high rounded-lg transition-colors flex items-center gap-2"
               >
-                <User className="w-3.5 h-3.5 text-primary" />
+                <User className="w-3.5 h-3.5 text-secondary" />
                 Manage Identity Fabrics
               </button>
               <button
                 onClick={() => {
                   logout();
                   setIsProfileOpen(false);
-                  setActiveTab('landing');
                 }}
                 className="w-full text-left px-3 py-2 text-xs text-error hover:bg-error-container/20 rounded-lg transition-colors flex items-center gap-2 mt-1"
               >

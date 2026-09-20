@@ -10,7 +10,8 @@ import {
   ShieldCheck,
   PlaySquare,
   Search,
-  ExternalLink
+  ExternalLink,
+  KeyRound
 } from 'lucide-react';
 
 export const Sidebar = () => {
@@ -26,6 +27,7 @@ export const Sidebar = () => {
     { id: 'investigation', label: 'AI Investigation', icon: BrainCircuit },
     { id: 'blast-radius', label: 'Attack Graph', icon: GitFork },
     { id: 'recovery', label: 'Recovery Center', icon: ShieldCheck },
+    { id: 'profile', label: 'Account Security', icon: KeyRound },
     { id: 'prototype', label: 'Attack Sandbox', icon: PlaySquare, highlight: true },
   ];
 
@@ -119,7 +121,7 @@ export const Sidebar = () => {
               {systemStatus}
             </span>
           </div>
-          <span className="text-[10px] font-mono text-outline">v2.4.0</span>
+          <span className="text-[10px] font-mono text-outline">v1.0.0-MVP</span>
         </div>
       </div>
     </aside>

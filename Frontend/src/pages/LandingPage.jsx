@@ -38,9 +38,9 @@ export const LandingPage = () => {
     {
       step: '01',
       title: 'Continuous Identity Ingestion',
-      desc: 'Real-time telemetry listening across AWS IAM, GitHub Audit, Okta SystemLog, and Google Workspace at over 250,000 events/sec.',
+      desc: 'Real-time security telemetry listening across Google Workspace, GitHub Enterprise, and simulated AWS environments.',
       icon: Network,
-      tag: 'SUB-MILLISECOND INGESTION'
+      tag: 'STREAM EVENT NORMALIZATION'
     },
     {
       step: '02',
@@ -52,14 +52,14 @@ export const LandingPage = () => {
     {
       step: '03',
       title: 'Autonomous Sentinel Defense',
-      desc: 'AI Sentinel correlates multi-vector IOCs against MITRE ATT&CK patterns to sever compromised connections in milliseconds.',
+      desc: 'AI Sentinel correlates multi-vector IOCs against MITRE ATT&CK patterns to isolate compromised credentials.',
       icon: BrainCircuit,
       tag: 'AUTONOMOUS INTERCEPTION'
     },
     {
       step: '04',
       title: '1-Click Cryptographic Recovery',
-      desc: 'Orchestrates full state restoration, token rotation, and hardware FIDO2 re-issuance without engineering downtime.',
+      desc: 'Orchestrates full state restoration, token revocation, and verified remediation without engineering downtime.',
       icon: ShieldCheck,
       tag: 'ZERO DOWNTIME ROLLBACK'
     }
@@ -68,19 +68,19 @@ export const LandingPage = () => {
   const faqs = [
     {
       q: 'How does RE:COVER differ from traditional SIEM / SOAR tools?',
-      a: 'Traditional SOARs require complex manual playbook authoring and react post-facto. RE:COVER is an autonomous digital immune system that operates with sub-second graph topology comprehension, stopping credential attacks and blast radius expansion before exfiltration can occur.'
+      a: 'Traditional SOARs require complex manual playbook authoring and react post-facto. RE:COVER is an autonomous digital immune system that operates with graph topology comprehension, stopping credential attacks and blast radius expansion before exfiltration can occur.'
     },
     {
       q: 'Does RE:COVER require invasive agents on our servers?',
-      a: 'No. RE:COVER connects directly into your existing cloud identity fabrics (AWS IAM, Okta, GitHub, Google Workspace) via read-only telemetry streams and authorized least-privilege APIs, deploying in under 5 minutes.'
+      a: 'No. RE:COVER connects directly into your cloud identity fabrics (Google Cloud & Workspace, GitHub Enterprise, and simulated AWS) via read-only telemetry streams and authorized least-privilege APIs, deploying in under 5 minutes.'
     },
     {
       q: 'Can our SecOps team retain Human-in-the-Loop control?',
-      a: 'Absolutely. You can configure granular autonomous guardrails: benign containment actions can execute automatically, while high-impact actions (such as production database snapshots or IAM teardowns) can require 1-click human authorization.'
+      a: 'Absolutely. You can configure granular autonomous guardrails: benign containment actions can execute automatically, while high-impact actions (such as credential teardowns or role modifications) require 1-click human authorization.'
     },
     {
-      q: 'What compliance frameworks does RE:COVER support?',
-      a: 'RE:COVER is built for SOC2 Type II, ISO 27001, HIPAA, and FedRAMP High environments with end-to-end cryptographic audit trails.'
+      q: 'How does RE:COVER prevent hallucinated remediation actions?',
+      a: 'Every remediation plan undergoes verification by an Adversarial Verifier agent and deterministic policy engine, validating that all claims are strictly grounded in verified telemetry evidence before execution.'
     }
   ];
 
@@ -151,17 +151,17 @@ export const LandingPage = () => {
                 <div className="absolute top-4 left-4 p-3 rounded-xl bg-surface-container/80 backdrop-blur-md border border-white/10 shadow-lg text-left hidden sm:block">
                   <div className="flex items-center gap-2 text-[10px] font-mono text-outline uppercase">
                     <Activity className="w-3 h-3 text-primary animate-pulse" />
-                    <span>Active Telemetry Streams</span>
+                    <span>Active Telemetry Stream</span>
                   </div>
-                  <p className="text-sm font-mono font-bold text-on-surface mt-0.5">248,912 / sec</p>
+                  <p className="text-sm font-mono font-bold text-on-surface mt-0.5">Continuous Ingestion</p>
                 </div>
 
                 <div className="absolute top-4 right-4 p-3 rounded-xl bg-surface-container/80 backdrop-blur-md border border-white/10 shadow-lg text-right hidden sm:block">
                   <div className="flex items-center justify-end gap-2 text-[10px] font-mono text-outline uppercase">
-                    <span>Mean Time to Contain</span>
+                    <span>Autonomous Defense</span>
                     <Zap className="w-3 h-3 text-secondary" />
                   </div>
-                  <p className="text-sm font-mono font-bold text-secondary mt-0.5">&lt; 4.2 Seconds</p>
+                  <p className="text-sm font-mono font-bold text-secondary mt-0.5">Topological Isolation</p>
                 </div>
 
                 <div className="absolute bottom-4 left-1/2 -translate-x-1/2 px-4 py-2 rounded-xl bg-surface-container/90 backdrop-blur-md border border-white/10 shadow-lg flex items-center gap-4 text-xs font-mono text-on-surface">
@@ -299,23 +299,25 @@ export const LandingPage = () => {
               </p>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 max-w-4xl mx-auto">
               {[
-                { name: 'AWS Cloud', desc: 'IAM, STS, S3, GuardDuty' },
-                { name: 'GitHub Enterprise', desc: 'PATs, SSH, Webhooks' },
-                { name: 'Google Workspace', desc: 'Admin SDK, Drive DLP' },
-                { name: 'Okta Workforce', desc: 'Adaptive SSO, MFA' },
-                { name: 'Slack Grid', desc: 'Token Leak Watchers' },
-                { name: 'Microsoft Entra', desc: 'Azure Activity & IAM' },
+                { name: 'Google Cloud & Workspace', desc: 'OAuth 2.0 PKCE, OpenID Connect & Audit Logs', badge: 'REAL OAUTH' },
+                { name: 'GitHub Enterprise', desc: 'OAuth 2.0 Web Flow, Org Audits & PAT Watchers', badge: 'REAL OAUTH' },
+                { name: 'Amazon Web Services', desc: 'Synthetic STS, IAM Roles & CloudTrail Telemetry', badge: 'SIMULATED' },
               ].map(item => (
                 <div
                   key={item.name}
                   onClick={openConnectModal}
-                  className="p-4 rounded-xl bg-surface-container hover:bg-surface-container-high border border-white/5 hover:border-primary/40 transition-all text-center cursor-pointer group"
+                  className="p-5 rounded-xl bg-surface-container hover:bg-surface-container-high border border-white/5 hover:border-primary/40 transition-all text-center cursor-pointer group space-y-2"
                 >
-                  <Shield className="w-6 h-6 text-primary mx-auto mb-2 group-hover:scale-110 transition-transform" />
+                  <div className="flex justify-center">
+                    <span className="text-[9px] font-mono font-bold px-2 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">
+                      {item.badge}
+                    </span>
+                  </div>
+                  <Shield className="w-6 h-6 text-primary mx-auto group-hover:scale-110 transition-transform" />
                   <h4 className="text-xs font-bold text-on-surface">{item.name}</h4>
-                  <p className="text-[10px] text-outline mt-1">{item.desc}</p>
+                  <p className="text-[10px] text-outline">{item.desc}</p>
                 </div>
               ))}
             </div>
@@ -390,9 +392,9 @@ export const LandingPage = () => {
           <span>© 2026 RE:COVER Digital Immune System. All rights reserved.</span>
         </div>
         <div className="flex items-center gap-6 font-mono text-[11px]">
-          <span>SOC2 Type II Certified</span>
-          <span>ISO/IEC 27001</span>
-          <span>Zero-Knowledge Architecture</span>
+          <span>Least-Privilege Scoped</span>
+          <span>Deterministic Policy Engine</span>
+          <span>Adversarial Verifier Grounding</span>
         </div>
       </footer>
     </div>

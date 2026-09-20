@@ -84,8 +84,19 @@ const config = {
   wsMaxMessagesPerMinute: parseInt(process.env.WS_MAX_MESSAGES_PER_MINUTE, 10) || 120,
   wsMaxMessageBytes: parseInt(process.env.WS_MAX_MESSAGE_BYTES, 10) || 16384,
   maxNotificationPayloadBytes: parseInt(process.env.MAX_NOTIFICATION_PAYLOAD_BYTES, 10) || 16384,
-  notificationRetentionDays: parseInt(process.env.NOTIFICATION_RETENTION_DAYS, 10) || 30,
+  maxNotificationRetentionDays: parseInt(process.env.NOTIFICATION_RETENTION_DAYS, 10) || 30,
   maxNotificationPageSize: parseInt(process.env.MAX_NOTIFICATION_PAGE_SIZE, 10) || 100,
+  // SMTP Email Service settings (Never log SMTP credentials)
+  smtpHost: process.env.SMTP_HOST || null,
+  smtpPort: parseInt(process.env.SMTP_PORT, 10) || 587,
+  smtpUser: process.env.SMTP_USER || null,
+  smtpPassword: process.env.SMTP_PASSWORD || null,
+  smtpFrom: process.env.SMTP_FROM || 'Re:COVER Security <no-reply@recover.security>',
+  smtpSecure: process.env.SMTP_SECURE === 'true',
+  // OTP & 2FA settings
+  otpTtlMinutes: parseInt(process.env.OTP_TTL_MINUTES, 10) || 10,
+  otpMaxAttempts: parseInt(process.env.OTP_MAX_ATTEMPTS, 10) || 5,
+  pending2faTtlMinutes: parseInt(process.env.PENDING_2FA_TTL_MINUTES, 10) || 5,
 };
 
 module.exports = config;

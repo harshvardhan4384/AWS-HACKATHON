@@ -27,11 +27,12 @@
     "google-auth-library": "^11.1.0",
     "helmet": "^8.3.0",
     "neo4j-driver": "^6.2.0",
+    "nodemailer": "^10.0.10",
     "prisma": "^8.0.0-rc.15",
+    "qrcode": "^1.5.4",
     "ws": "^8.21.3",
     "zod": "^4.6.5"
   },
-
   "devDependencies": {
     "nodemon": "^3.1.14"
   }

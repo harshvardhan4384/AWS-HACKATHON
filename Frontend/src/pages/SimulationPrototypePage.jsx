@@ -29,13 +29,13 @@ export const SimulationPrototypePage = () => {
       desc: 'Adversary leverages a leaked GitHub PAT to provision a backdoor deploy key, assume IAM role Deployer-Prod-Admin, and initiate batch S3 download.'
     },
     {
-      id: 'okta',
-      title: 'Multi-Geo Okta Password Spray & Push Fatigue',
-      vector: 'Credential Stuffing + MFA Bombing',
-      provider: 'Okta Identity',
+      id: 'aws-iam',
+      title: 'Simulated AWS IAM Privilege Escalation & Lateral Movement',
+      vector: 'STS AssumeRole + Cross-Boundary Enum',
+      provider: 'AWS (Simulated)',
       severity: 'HIGH',
-      target: 'okta:directory:all_users',
-      desc: 'Adversary floods Okta SSO with 500 credential pairs across Tor exit nodes, triggering rapid push notifications to induce user fatigue.'
+      target: 'arn:aws:iam::simulated-sandbox:role/DataPipelineWorker',
+      desc: 'Adversary leverages temporary security credentials from an over-permissioned role to enumerate sensitive S3 buckets and establish unauthorized persistence.'
     },
     {
       id: 'oauth',
@@ -81,7 +81,7 @@ export const SimulationPrototypePage = () => {
     ]);
     setExecutionState('completed');
 
-    triggerScenario(selectedScenario === 'pat' ? 'pat-leak' : 'okta-spray');
+    triggerScenario(selectedScenario === 'pat' ? 'pat-leak' : (selectedScenario === 'oauth' ? 'oauth-grant' : 'aws-escalation'));
     addToast('success', 'Simulation Finished', 'Autonomous Sentinel isolated all attack vectors in 1.6s.');
   };
 

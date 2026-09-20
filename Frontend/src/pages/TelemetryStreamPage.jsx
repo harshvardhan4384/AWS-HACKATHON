@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSecurity } from '../context/SecurityContext';
 import {
   Activity,
@@ -8,12 +8,19 @@ import {
   Search,
   Terminal,
   Copy,
-  Check
+  Check,
+  RefreshCw,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 
 export const TelemetryStreamPage = () => {
   const {
     telemetryLogs,
+    isEventsLoading,
+    eventsError,
+    eventsPagination,
+    fetchSecurityEvents,
     isSimulating,
     toggleSimulation,
     simulationSpeed,
@@ -23,26 +30,47 @@ export const TelemetryStreamPage = () => {
   } = useSecurity();
 
   const [filterLevel, setFilterLevel] = useState('ALL');
+  const [filterProvider, setFilterProvider] = useState('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedLog, setSelectedLog] = useState(null);
   const [copiedId, setCopiedId] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+
+  // Re-fetch events when page or filters change
+  useEffect(() => {
+    fetchSecurityEvents({
+      page: currentPage,
+      provider: filterProvider !== 'ALL' ? filterProvider : undefined,
+      severity: filterLevel === 'SEC_CRIT' ? 'CRITICAL' : filterLevel === 'ALERT' ? 'HIGH' : filterLevel === 'WARN' ? 'MEDIUM' : filterLevel === 'INFO' ? 'INFO' : undefined
+    });
+  }, [currentPage, filterProvider, filterLevel, fetchSecurityEvents]);
 
   const filteredLogs = telemetryLogs.filter(log => {
     const matchesLevel = filterLevel === 'ALL' || log.level === filterLevel;
+    const matchesProvider = filterProvider === 'ALL' || (log.service || '').toLowerCase().includes(filterProvider.toLowerCase());
     const matchesQuery =
-      log.service.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      log.eventType.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      log.actor.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      log.sourceIp.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      log.target.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesLevel && matchesQuery;
+      (log.service || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (log.eventType || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (log.actor || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (log.sourceIp || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (log.target || '').toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesLevel && matchesProvider && matchesQuery;
   });
 
   const handleCopyLog = (log) => {
-    navigator.clipboard.writeText(JSON.stringify(log, null, 2));
+    const dataToCopy = log.raw || log.payload || log;
+    navigator.clipboard.writeText(JSON.stringify(dataToCopy, null, 2));
     setCopiedId(log.id);
     addToast('success', 'Log Copied', 'Telemetry event JSON copied.');
     setTimeout(() => setCopiedId(null), 2000);
+  };
+
+  const handleRefresh = () => {
+    fetchSecurityEvents({
+      page: currentPage,
+      provider: filterProvider !== 'ALL' ? filterProvider : undefined
+    });
+    addToast('info', 'Refreshed', 'Telemetry feed refreshed from security server.');
   };
 
   return (
@@ -56,18 +84,28 @@ export const TelemetryStreamPage = () => {
               LIVE TELEMETRY & EVENT INGESTION STREAM
             </span>
             <span className="w-1 h-1 rounded-full bg-outline"></span>
-            <span className="font-mono text-xs text-secondary font-semibold">248,912 EPS INGESTION</span>
+            <span className="font-mono text-xs text-secondary font-semibold">HIGH-THROUGHPUT NORMALIZED INGESTION</span>
           </div>
           <h1 className="font-headline font-bold text-2xl text-on-surface mt-1">
             Real-Time Identity Fabric Activity
           </h1>
           <p className="text-xs text-on-surface-variant mt-0.5">
-            Streaming audit logs across AWS CloudTrail, Okta SystemLog, GitHub Audit, and Google Workspace.
+            Streaming security audit logs across Google Workspace, GitHub Enterprise, and simulated AWS environments.
           </p>
         </div>
 
         {/* Live Controls */}
         <div className="flex flex-wrap items-center gap-2">
+          {/* Refresh Button */}
+          <button
+            onClick={handleRefresh}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-surface-container-high hover:bg-surface-variant text-on-surface border border-white/5 transition-colors"
+            title="Refresh Telemetry Stream"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isEventsLoading ? 'animate-spin text-primary' : ''}`} />
+            <span>Refresh</span>
+          </button>
+
           {/* Pause / Play */}
           <button
             onClick={toggleSimulation}
@@ -109,8 +147,17 @@ export const TelemetryStreamPage = () => {
         </div>
       </div>
 
+      {eventsError && (
+        <div className="p-4 rounded-xl bg-error/10 border border-error/20 flex items-center justify-between text-xs text-error">
+          <span>{eventsError}</span>
+          <button onClick={handleRefresh} className="underline font-semibold hover:text-error/80">
+            Retry
+          </button>
+        </div>
+      )}
+
       {/* Filter & Search Bar */}
-      <div className="p-4 rounded-2xl bg-surface-container border border-white/5 shadow-md flex flex-col sm:flex-row gap-3 items-center justify-between">
+      <div className="p-4 rounded-2xl bg-surface-container border border-white/5 shadow-md flex flex-col md:flex-row gap-3 items-center justify-between">
         <div className="relative flex-1 w-full">
           <Search className="w-4 h-4 text-outline absolute left-3.5 top-3" />
           <input
@@ -122,12 +169,30 @@ export const TelemetryStreamPage = () => {
           />
         </div>
 
+        {/* Provider Filter */}
+        <select
+          value={filterProvider}
+          onChange={e => {
+            setFilterProvider(e.target.value);
+            setCurrentPage(1);
+          }}
+          className="px-3 py-2 bg-surface-container-lowest border border-white/10 rounded-xl text-xs text-on-surface focus:outline-none focus:border-primary font-mono cursor-pointer w-full md:w-auto"
+        >
+          <option value="ALL">All Providers</option>
+          <option value="AWS">AWS</option>
+          <option value="GITHUB">GitHub</option>
+          <option value="GOOGLE">Google</option>
+        </select>
+
         {/* Level Filters */}
-        <div className="flex flex-wrap items-center gap-1.5 w-full sm:w-auto">
+        <div className="flex flex-wrap items-center gap-1.5 w-full md:w-auto">
           {['ALL', 'INFO', 'WARN', 'ALERT', 'SEC_CRIT'].map(lvl => (
             <button
               key={lvl}
-              onClick={() => setFilterLevel(lvl)}
+              onClick={() => {
+                setFilterLevel(lvl);
+                setCurrentPage(1);
+              }}
               className={`px-2.5 py-1.5 rounded-lg text-[10px] font-mono font-bold transition-colors ${
                 filterLevel === lvl
                   ? 'bg-primary text-on-primary'
@@ -153,7 +218,11 @@ export const TelemetryStreamPage = () => {
           </div>
 
           <div className="space-y-2 max-h-[600px] overflow-y-auto pr-1">
-            {filteredLogs.length === 0 ? (
+            {isEventsLoading && filteredLogs.length === 0 ? (
+              <div className="p-12 text-center text-xs text-outline font-mono animate-pulse">
+                Streaming security events from providers...
+              </div>
+            ) : filteredLogs.length === 0 ? (
               <div className="p-12 text-center text-xs text-outline">
                 No telemetry events match the filter.
               </div>
@@ -172,7 +241,7 @@ export const TelemetryStreamPage = () => {
                     <div className="flex items-center gap-2 font-mono text-[10px]">
                       <span className="text-outline">{log.timestamp}</span>
                       <span className={`px-1.5 py-0.2 rounded font-bold uppercase ${
-                        log.level === 'SEC_CRIT' ? 'bg-error text-on-error' : log.level === 'ALERT' ? 'bg-amber-500 text-black' : log.level === 'WARN' ? 'bg-amber-400/20 text-amber-400' : 'bg-surface-container-highest text-primary'
+                        log.level === 'SEC_CRIT' ? 'bg-error text-on-error' : log.level === 'ALERT' ? 'bg-amber-500 text-black' : 'bg-amber-400/20 text-amber-400'
                       }`}>
                         {log.level}
                       </span>
@@ -210,6 +279,31 @@ export const TelemetryStreamPage = () => {
                 </div>
               ))
             )}
+          </div>
+
+          {/* Pagination Controls */}
+          <div className="flex flex-wrap items-center justify-between pt-3 border-t border-white/5 text-xs font-mono text-outline gap-2">
+            <span>
+              Page {eventsPagination.page} of {eventsPagination.totalPages || 1} ({eventsPagination.total} events)
+            </span>
+            <div className="flex items-center gap-1.5">
+              <button
+                disabled={eventsPagination.page <= 1 || isEventsLoading}
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                className="px-2.5 py-1 rounded-lg bg-surface-container-highest hover:bg-surface-variant disabled:opacity-30 disabled:cursor-not-allowed text-on-surface flex items-center gap-1 font-sans text-xs transition-colors"
+              >
+                <ChevronLeft className="w-3.5 h-3.5" />
+                <span>Prev</span>
+              </button>
+              <button
+                disabled={!eventsPagination.hasMore || isEventsLoading}
+                onClick={() => setCurrentPage(p => p + 1)}
+                className="px-2.5 py-1 rounded-lg bg-surface-container-highest hover:bg-surface-variant disabled:opacity-30 disabled:cursor-not-allowed text-on-surface flex items-center gap-1 font-sans text-xs transition-colors"
+              >
+                <span>Next</span>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
           </div>
         </div>
 

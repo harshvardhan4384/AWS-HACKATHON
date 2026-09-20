@@ -62,7 +62,60 @@ async function deleteByTokenHash(sessionTokenHash) {
  */
 async function deleteByUserId(userId) {
   const db = getDb();
-  await db.orm.public.Session.where({ userId }).delete();
+  const allSessions = await db.orm.public.Session.where({ userId }).all();
+  for (const s of allSessions) {
+    await db.orm.public.Session.where({ id: s.id }).delete();
+  }
+}
+
+/**
+ * Finds all active, unexpired sessions for a user.
+ *
+ * @param {string} userId
+ * @returns {Promise<Array<object>>}
+ */
+async function findActiveByUserId(userId) {
+  const db = getDb();
+  const sessions = await db.orm.public.Session.where({ userId }).all();
+  const now = new Date();
+  return sessions
+    .filter(s => new Date(s.expiresAt) > now)
+    .sort((a, b) => new Date(b.lastUsedAt).getTime() - new Date(a.lastUsedAt).getTime());
+}
+
+/**
+ * Deletes a specific session belonging to a user (strict tenant isolation).
+ *
+ * @param {string} id Session UUID
+ * @param {string} userId User UUID
+ * @returns {Promise<boolean>}
+ */
+async function deleteByIdAndUser(id, userId) {
+  const db = getDb();
+  const session = await db.orm.public.Session.where({ id, userId }).first();
+  if (!session) return false;
+  await db.orm.public.Session.where({ id }).delete();
+  return true;
+}
+
+/**
+ * Deletes all sessions for a user EXCEPT the specified current session.
+ *
+ * @param {string} userId User UUID
+ * @param {string} currentSessionId Current session UUID
+ * @returns {Promise<number>} Number of sessions revoked
+ */
+async function deleteOtherSessions(userId, currentSessionId) {
+  const db = getDb();
+  const allSessions = await db.orm.public.Session.where({ userId }).all();
+  let count = 0;
+  for (const s of allSessions) {
+    if (s.id !== currentSessionId) {
+      await db.orm.public.Session.where({ id: s.id }).delete();
+      count++;
+    }
+  }
+  return count;
 }
 
 module.exports = {
@@ -71,5 +124,7 @@ module.exports = {
   updateLastUsed,
   deleteByTokenHash,
   deleteByUserId,
+  findActiveByUserId,
+  deleteByIdAndUser,
+  deleteOtherSessions,
 };
-
